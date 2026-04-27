@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% block title %}Profil strażaka{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Profil strażaka</h2>
+
+        <div>
+            <a href="{{ url_for('firefighter_controller.edit_firefighter_form', id=firefighter.firefighter_id) }}"
+               class="btn btn-primary me-2">
+                <i class="bi bi-pencil-square"></i> Edytuj strażaka
+            </a>
+
+            {% if not firefighter.nfc_hash %}
+            <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#nfcModal">
+                <i class="bi bi-upc-scan"></i> Przypisz kartę NFC
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+
+        <!-- ========================= -->
+        <!-- LEWA KOLUMNA -->
+        <!-- ========================= -->
+        <div class="col-md-5">
+
+            <!-- Dane osobowe -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    Dane osobowe
+                </div>
+                <div class="card-body">
+
+                    <p><strong>Imię:</strong> {{ firefighter.first_name }}</p>
+                    <p><strong>Nazwisko:</strong> {{ firefighter.last_name }}</p>
+
+                    <p>
+                        <strong>Karta NFC:</strong>
+                        {% if firefighter.nfc_hash %}
+                            <span class="text-success fw-bold"><i class="bi bi-check-circle"></i> ✓</span>
+                        {% else %}
+                            <span class="text-secondary fw-bold"><i class="bi bi-x-circle"></i> ✗</span>
+                        {% endif %}
+                    </p>
+
+                </div>
+            </div>
+
+            <!-- Wymiary -->
+            <div class="card mb-4">
+                <div class="card-header bg-secondary text-white">
+                    Wymiary ciała
+                </div>
+                <div class="card-body">
+
+                    {% if not firefighter.measurements_complete %}
+                    <div class="alert alert-warning">
+                        Brak kompletu wymiarów.
+                    </div>
+                    {% endif %}
+
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <th>Wzrost</th>
+                                <td>
+                                    {% if firefighter.height_cm %}
+                                        {{ firefighter.height_cm }} cm
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th>Klatka piersiowa</th>
+                                <td>
+                                    {% if firefighter.chest_cm %}
+                                        {{ firefighter.chest_cm }} cm
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th>Obwód pasa</th>
+                                <td>
+                                    {% if firefighter.waist_cm %}
+                                        {{ firefighter.waist_cm }} cm
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th>Rozmiar czapki</th>
+                                <td>
+                                    {% if firefighter.hat_size %}
+                                        {{ firefighter.hat_size }}
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th>Rozmiar koszulki</th>
+                                <td>
+                                    {% if firefighter.shirt_size %}
+                                        {{ firefighter.shirt_size }}
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th>Rozmiar obuwia</th>
+                                <td>
+                                    {% if firefighter.shoe_size %}
+                                        {{ firefighter.shoe_size }}
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- ========================= -->
+        <!-- PRAWA KOLUMNA -->
+        <!-- ========================= -->
+        <div class="col-md-7">
+
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    Wydane przedmioty
+                </div>
+                <div class="card-body">
+
+                    {% if issued_items %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Nazwa</th>
+                                    <th>Jednostka</th>
+                                    <th>Data wydania</th>
+                                    <th>Wygasa</th>
+                                    <th>Karta odzież.</th>
+                                    <th>Uwagi</th>
+                                    <th>Akcje</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in issued_items %}
+                                <tr>
+                                    <td>{{ item.name }}</td>
+                                    <td>{{ item.unit_of_measure }}</td>
+                                    <td>{{ item.issue_date }}</td>
+                                    <td>{{ item.expiry_date or '—' }}</td>
+                                    <td>{{ item.clothing_card_number or '—' }}</td>
+                                    <td>{{ item.notes or '—' }}</td>
+                                    <td>
+
+                                        <!-- Zwrot -->
+                                        <form method="POST"
+                                              action="{{ url_for('item_controller.return_item', id=item.item_id) }}"
+                                              class="d-inline"
+                                              onsubmit="return confirm('Czy na pewno zwrócić przedmiot?');">
+                                            <button class="btn btn-sm btn-warning">Zwrot</button>
+                                        </form>
+
+                                        <!-- Zużyj -->
+                                        <form method="POST"
+                                              action="{{ url_for('item_controller.consume_item', id=item.item_id) }}"
+                                              class="d-inline"
+                                              onsubmit="return confirm('Oznaczyć jako zużyty?');">
+                                            <button class="btn btn-sm btn-danger">Zużyj</button>
+                                        </form>
+
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% else %}
+                    <p class="text-muted">Brak wydanych przedmiotów.</p>
+                    {% endif %}
+
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ========================= -->
+<!-- MODAL: PRZYPISANIE KARTY NFC -->
+<!-- ========================= -->
+<div class="modal fade" id="nfcModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">Przypisz kartę NFC</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <p><strong>Przyłóż kartę NFC do czytnika...</strong></p>
+                <div class="spinner-border text-primary mb-3" role="status"></div>
+
+                <input id="nfc-input" type="text" class="form-control" style="opacity:0; height:1px;">
+
+                <div id="nfc-success" class="alert alert-success mt-3" style="display:none;">
+                    <span id="nfc-success-text"></span>
+                </div>
+
+                <div id="nfc-timeout" class="alert alert-warning mt-3" style="display:none;">
+                    Nie wykryto karty, spróbuj ponownie.
+                </div>
+
+                <form id="nfc-form" method="POST"
+                      action="{{ url_for('firefighter_controller.edit_firefighter_post', id=firefighter.firefighter_id) }}"
+                      style="display:none;">
+
+                    <input type="hidden" name="first_name" value="{{ firefighter.first_name }}">
+                    <input type="hidden" name="last_name" value="{{ firefighter.last_name }}">
+                    <input type="hidden" name="nfc_username" id="nfc_username">
+                    <input type="hidden" name="nfc_hash" id="nfc_hash">
+
+                    <button type="submit" class="btn btn-success mt-3">Zapisz kartę NFC</button>
+                </form>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/nfc.js') }}"></script>
+
+<script>
+    // ============================
+    // MODAL NFC
+    // ============================
+
+    const successBox = document.getElementById("nfc-success");
+    const successText = document.getElementById("nfc-success-text");
+    const timeoutBox = document.getElementById("nfc-timeout");
+    const formNFC = document.getElementById("nfc-form");
+
+    let reader = null;
+
+    document.getElementById("nfcModal").addEventListener("shown.bs.modal", () => {
+        successBox.style.display = "none";
+        timeoutBox.style.display = "none";
+
+        reader = new NFCReader("nfc-input", (data) => {
+            document.getElementById("nfc_username").value = data.userName;
+            document.getElementById("nfc_hash").value = data.hash;
+
+            successText.textContent = "Karta przypisana: " + data.userName;
+            successBox.style.display = "block";
+            formNFC.style.display = "block";
+        });
+
+        reader.startListening();
+    });
+
+    document.getElementById("nfcModal").addEventListener("hidden.bs.modal", () => {
+        if (reader) reader.stopListening();
+    });
+
+    document.addEventListener("nfc-timeout", () => {
+        timeoutBox.style.display = "block";
+    });
+</script>
+{% endblock %}

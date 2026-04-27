@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Edytuj przedmiot – {{ item.name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    <h2 class="mb-4">Edytuj przedmiot – {{ item.name }}</h2>
+
+    {% if item.is_consumed %}
+    <div class="alert alert-danger">
+        Ten przedmiot jest oznaczony jako <strong>zużyty</strong> – edycja ograniczona.
+        Możesz zmienić jedynie pole „Uwagi”.
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('item_controller.edit_item_post', id=item.item_id) }}">
+
+        <!-- ========================= -->
+        <!-- DANE PRZEDMIOTU -->
+        <!-- ========================= -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                Dane przedmiotu
+            </div>
+
+            <div class="card-body">
+
+                <!-- Nazwa -->
+                <div class="mb-3">
+                    <label class="form-label">Nazwa *</label>
+                    <input type="text" name="name" class="form-control"
+                           value="{{ item.name }}"
+                           {% if item.is_consumed %}disabled{% endif %} required>
+                </div>
+
+                <!-- Jednostka miary -->
+                <div class="mb-3">
+                    <label class="form-label">Jednostka miary *</label>
+                    <select name="unit_of_measure" class="form-select"
+                            {% if item.is_consumed %}disabled{% endif %}>
+
+                        {% set units = ['szt','para','kg','l','m','komplet'] %}
+                        {% if item.unit_of_measure not in units %}
+                            <option value="{{ item.unit_of_measure }}" selected>{{ item.unit_of_measure }}</option>
+                        {% endif %}
+
+                        {% for u in units %}
+                            <option value="{{ u }}" {% if item.unit_of_measure == u %}selected{% endif %}>
+                                {{ u }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Okres używania -->
+                <div class="mb-3">
+                    <label class="form-label">Okres używania (miesiące)</label>
+                    <input type="number" name="usage_period_months" class="form-control"
+                           placeholder="Pozostaw puste – oznacza 'do zużycia'"
+                           value="{{ item.usage_period_months or '' }}"
+                           {% if item.is_consumed %}disabled{% endif %}>
+                </div>
+
+                <!-- Nr karty odzieżowej -->
+                <div class="mb-3">
+                    <label class="form-label">Nr karty odzieżowej (opcjonalne)</label>
+                    <input type="text" name="clothing_card_number" class="form-control"
+                           value="{{ item.clothing_card_number or '' }}"
+                           {% if item.is_consumed %}disabled{% endif %}>
+                </div>
+
+                <!-- Uwagi -->
+                <div class="mb-3">
+                    <label class="form-label">Uwagi (opcjonalne)</label>
+                    <textarea name="notes" class="form-control" rows="3">{{ item.notes or '' }}</textarea>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ========================= -->
+        <!-- STATUS PRZEDMIOTU -->
+        <!-- ========================= -->
+        <div class="card mb-4">
+            <div class="card-header bg-dark text-white">
+                Status przedmiotu
+            </div>
+
+            <div class="card-body">
+
+                <p>
+                    <strong>Status:</strong>
+                    <span class="badge bg-secondary">{{ item.status_label }}</span>
+                </p>
+
+                <p>
+                    <strong>Wydany do:</strong>
+                    {% if item.firefighter %}
+                        {{ item.firefighter.full_name }}
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </p>
+
+                <p>
+                    <strong>Data wydania:</strong>
+                    {{ item.issue_date or "—" }}
+                </p>
+
+                <p>
+                    <strong>Data wygaśnięcia:</strong>
+                    {{ item.expiry_date or "—" }}
+                </p>
+
+            </div>
+        </div>
+
+        <!-- ========================= -->
+        <!-- PRZYCISKI -->
+        <!-- ========================= -->
+        <button type="submit" class="btn btn-primary">Zapisz zmiany</button>
+
+        <a href="{{ url_for('item_controller.item_detail', id=item.item_id) }}"
+           class="btn btn-outline-secondary ms-2">
+            Anuluj
+        </a>
+
+    </form>
+
+</div>
+{% endblock %}

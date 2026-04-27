@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    <h2 class="mb-4">Dashboard</h2>
+
+    <!-- ========================= -->
+    <!-- KARTY STATYSTYK -->
+    <!-- ========================= -->
+    <div class="row mb-4">
+
+        <div class="col-md-3">
+            <div class="card text-white bg-primary shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Przedmioty w magazynie</h5>
+                    <p class="card-text fs-3">{{ in_stock_count }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-white bg-info shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Wydane przedmioty</h5>
+                    <p class="card-text fs-3">{{ issued_count }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-white bg-secondary shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Strażacy</h5>
+                    <p class="card-text fs-3">{{ firefighters_count }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-white bg-danger shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Powiadomienia (pilne)</h5>
+                    <p class="card-text fs-3">{{ notifications_danger }}</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- ========================= -->
+    <!-- OSTATNIE AKCJE MAGAZYNOWE -->
+    <!-- ========================= -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-dark text-white">
+            Ostatnie działania w magazynie
+        </div>
+
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0 align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Data</th>
+                            <th>Akcja</th>
+                            <th>Przedmiot</th>
+                            <th>Strażak</th>
+                            <th>Wykonał</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log, item, firefighter in recent_activity %}
+                        <tr>
+                            <td>{{ log.performed_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                {% if log.action == 'issued' %}
+                                    <span class="badge bg-primary">Wydano</span>
+                                {% elif log.action == 'returned' %}
+                                    <span class="badge bg-warning text-dark">Zwrócono</span>
+                                {% elif log.action == 'consumed' %}
+                                    <span class="badge bg-danger">Zużyto</span>
+                                {% else %}
+                                    {{ log.action }}
+                                {% endif %}
+                            </td>
+                            <td>{{ item.name }}</td>
+                            <td>{{ firefighter.full_name if firefighter else '-' }}</td>
+                            <td>{{ log.performed_by_user.full_name if log.performed_by_user else '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Edytuj strażaka{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    <h2 class="mb-4">Edytuj strażaka</h2>
+
+    <form method="POST" action="{{ url_for('firefighter_controller.edit_firefighter_post', id=firefighter.firefighter_id) }}">
+
+        <!-- ========================= -->
+        <!-- DANE STRAŻAKA -->
+        <!-- ========================= -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                Dane strażaka
+            </div>
+            <div class="card-body">
+
+                <div class="mb-3">
+                    <label class="form-label">Imię *</label>
+                    <input type="text" name="first_name" class="form-control"
+                           value="{{ firefighter.first_name }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Nazwisko *</label>
+                    <input type="text" name="last_name" class="form-control"
+                           value="{{ firefighter.last_name }}" required>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ========================= -->
+        <!-- WYMIARY -->
+        <!-- ========================= -->
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white">
+                Wymiary (opcjonalne)
+            </div>
+            <div class="card-body">
+
+                <div class="row g-3">
+
+                    <div class="col-md-4">
+                        <label class="form-label">Wzrost (cm)</label>
+                        <input type="number" name="height_cm" class="form-control"
+                               value="{{ firefighter.height_cm or '' }}">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Obwód klatki piersiowej (cm)</label>
+                        <input type="number" name="chest_cm" class="form-control"
+                               value="{{ firefighter.chest_cm or '' }}">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Obwód pasa (cm)</label>
+                        <input type="number" name="waist_cm" class="form-control"
+                               value="{{ firefighter.waist_cm or '' }}">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Rozmiar czapki</label>
+                        <input type="number" step="0.5" name="hat_size" class="form-control"
+                               value="{{ firefighter.hat_size or '' }}">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Rozmiar koszulki</label>
+                        <select name="shirt_size" class="form-select">
+                            <option value="">-- wybierz --</option>
+                            {% for size in ['XS','S','M','L','XL','XXL','3XL'] %}
+                                <option value="{{ size }}" {% if firefighter.shirt_size == size %}selected{% endif %}>
+                                    {{ size }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Rozmiar obuwia</label>
+                        <input type="number" step="0.5" name="shoe_size" class="form-control"
+                               value="{{ firefighter.shoe_size or '' }}">
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ========================= -->
+        <!-- KARTA NFC -->
+        <!-- ========================= -->
+        <div class="card mb-4">
+            <div class="card-header bg-dark text-white">
+                Karta NFC
+            </div>
+            <div class="card-body">
+
+                {% if firefighter.has_nfc %}
+                    <p>
+                        <span class="badge bg-success">
+                            Karta przypisana: {{ firefighter.nfc_username }}
+                        </span>
+                    </p>
+                    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#nfcModal">
+                        Zmień kartę
+                    </button>
+                {% else %}
+                    <p>
+                        <span class="badge bg-secondary">Brak karty NFC</span>
+                    </p>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nfcModal">
+                        Przypisz kartę
+                    </button>
+                {% endif %}
+
+                <!-- Ukryte pola -->
+                <input type="hidden" name="nfc_username" id="nfc_username">
+                <input type="hidden" name="nfc_hash" id="nfc_hash">
+
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-success">
+            Zapisz zmiany
+        </button>
+
+        <a href="{{ url_for('firefighter_controller.firefighter_detail', id=firefighter.firefighter_id) }}"
+           class="btn btn-secondary ms-2">
+            Anuluj
+        </a>
+
+    </form>
+</div>
+
+
+<!-- ========================= -->
+<!-- MODAL: SKANER NFC -->
+<!-- ========================= -->
+<div class="modal fade" id="nfcModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">Skanuj kartę NFC</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <p><strong>Przyłóż kartę NFC do czytnika...</strong></p>
+                <div class="spinner-border text-primary mb-3" role="status"></div>
+
+                <input id="nfc-input" type="text" class="form-control" style="opacity:0; height:1px;">
+
+                <div id="nfc-success" class="alert alert-success mt-3" style="display:none;">
+                    <span id="nfc-success-text"></span>
+                </div>
+
+                <div id="nfc-timeout" class="alert alert-warning mt-3" style="display:none;">
+                    Nie wykryto karty, spróbuj ponownie.
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/nfc.js') }}"></script>
+
+<script>
+    // ============================
+    // MODAL NFC
+    // ============================
+
+    const successBox = document.getElementById("nfc-success");
+    const successText = document.getElementById("nfc-success-text");
+    const timeoutBox = document.getElementById("nfc-timeout");
+
+    let reader = null;
+
+    document.getElementById("nfcModal").addEventListener("shown.bs.modal", () => {
+        successBox.style.display = "none";
+        timeoutBox.style.display = "none";
+
+        reader = new NFCReader("nfc-input", (data) => {
+            document.getElementById("nfc_username").value = data.userName;
+            document.getElementById("nfc_hash").value = data.hash;
+
+            successText.textContent = "Karta przypisana: " + data.userName;
+            successBox.style.display = "block";
+        });
+
+        reader.startListening();
+    });
+
+    document.getElementById("nfcModal").addEventListener("hidden.bs.modal", () => {
+        if (reader) reader.stopListening();
+    });
+
+    document.addEventListener("nfc-timeout", () => {
+        timeoutBox.style.display = "block";
+    });
+</script>
+{% endblock %}

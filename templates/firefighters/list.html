@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Strażacy{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Lista strażaków</h2>
+        <a href="{{ url_for('firefighter_controller.add_firefighter_form') }}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Dodaj strażaka
+        </a>
+    </div>
+
+    <div class="mb-3">
+        <input type="text" id="search-ff" class="form-control" placeholder="Wyszukaj po nazwisku...">
+    </div>
+
+    {% if not firefighters %}
+        <div class="alert alert-info">Brak strażaków.</div>
+    {% else %}
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-striped table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Lp</th>
+                        <th>Imię i Nazwisko</th>
+                        <th>Karta NFC</th>
+                        <th>Wydane przedmioty</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody id="ff-table">
+                    {% for firefighter in firefighters %}
+                    <tr class="ff-row" data-name="{{ firefighter.full_name|lower }}">
+                        <td>{{ loop.index }}</td>
+                        <td>{{ firefighter.full_name }}</td>
+                        <td>
+                            {% if firefighter.has_nfc %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Przypisana</span>
+                            {% else %}
+                                <span class="badge bg-secondary"><i class="bi bi-x-circle"></i> Brak</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ firefighter.items.filter_by(is_consumed=False).count() }}</td>
+                        <td>
+                            <a href="{{ url_for('firefighter_controller.firefighter_detail', id=firefighter.firefighter_id) }}"
+                               class="btn btn-sm btn-outline-primary me-1">
+                                <i class="bi bi-eye"></i> Szczegóły
+                            </a>
+                            <a href="{{ url_for('firefighter_controller.edit_firefighter_form', id=firefighter.firefighter_id) }}"
+                               class="btn btn-sm btn-outline-secondary me-1">
+                                <i class="bi bi-pencil"></i> Edytuj
+                            </a>
+                            <form method="POST"
+                                  action="{{ url_for('firefighter_controller.delete_firefighter', id=firefighter.firefighter_id) }}"
+                                  style="display:inline"
+                                  onsubmit="return confirm('Czy na pewno usunąć strażaka {{ firefighter.full_name }}?')">
+                                <button type="submit" class="btn btn-sm btn-danger">
+                                    <i class="bi bi-trash"></i> Usuń
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+    const searchInput = document.getElementById("search-ff");
+    const rows = document.querySelectorAll(".ff-row");
+    searchInput.addEventListener("input", () => {
+        const q = searchInput.value.toLowerCase();
+        rows.forEach(row => {
+            row.style.display = row.dataset.name.includes(q) ? "" : "none";
+        });
+    });
+</script>
+{% endblock %}

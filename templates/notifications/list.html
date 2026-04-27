@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Powiadomienia{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    <h2 class="mb-4">Powiadomienia o zbliżających się wymianach</h2>
+
+    <!-- ========================= -->
+    <!-- KARTY STATYSTYK -->
+    <!-- ========================= -->
+    <div class="row mb-4">
+
+        <div class="col-md-4">
+            <div class="card text-white bg-danger shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">🔴 Przeterminowane</h5>
+                    <p class="card-text fs-3">{{ counts.danger }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card text-dark bg-warning shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">🟡 Wymagają uwagi</h5>
+                    <p class="card-text fs-3">{{ counts.warning }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card text-white bg-info shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">🔵 Nadchodzące</h5>
+                    <p class="card-text fs-3">{{ counts.info }}</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- ========================= -->
+    <!-- BRAK POWIADOMIEŃ -->
+    <!-- ========================= -->
+    {% if counts.total == 0 %}
+    <div class="card border-success">
+        <div class="card-body text-success">
+            <h4>Wszystko w porządku ✓</h4>
+            <p>Brak przedmiotów wymagających wymiany w najbliższym czasie.</p>
+        </div>
+    </div>
+    {% endif %}
+
+
+    <!-- ========================= -->
+    <!-- SEKCJA: PRZETERMINOWANE -->
+    <!-- ========================= -->
+    {% if grouped.danger %}
+    <div class="alert alert-danger mt-4">
+        <h4 class="alert-heading">🔴 Przeterminowane</h4>
+        <p>Przedmioty, które powinny zostać wymienione natychmiast.</p>
+
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Przedmiot</th>
+                        <th>Strażak</th>
+                        <th>Data wydania</th>
+                        <th>Data wymiany</th>
+                        <th>Pozostało dni</th>
+                        <th>Akcja</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for n in grouped.danger %}
+                    <tr>
+                        <td>{{ n.item_name }}</td>
+                        <td>{{ n.firefighter_name or "-" }}</td>
+                        <td>{{ n.issue_date }}</td>
+                        <td>{{ n.expiry_date }}</td>
+                        <td class="text-danger fw-bold">{{ n.days_remaining }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('item_controller.consume_item', id=n.item_id) }}">
+                                <button class="btn btn-sm btn-danger">Zużyj</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+    {% endif %}
+
+
+    <!-- ========================= -->
+    <!-- SEKCJA: WARNING -->
+    <!-- ========================= -->
+    {% if grouped.warning %}
+    <div class="alert alert-warning mt-4">
+        <h4 class="alert-heading">🟡 Wymagają uwagi wkrótce</h4>
+        <p>Przedmioty, które należy wymienić w ciągu 1–14 dni.</p>
+
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Przedmiot</th>
+                        <th>Strażak</th>
+                        <th>Data wydania</th>
+                        <th>Data wymiany</th>
+                        <th>Pozostało dni</th>
+                        <th>Akcja</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for n in grouped.warning %}
+                    <tr>
+                        <td>{{ n.item_name }}</td>
+                        <td>{{ n.firefighter_name or "-" }}</td>
+                        <td>{{ n.issue_date }}</td>
+                        <td>{{ n.expiry_date }}</td>
+                        <td class="fw-bold">{{ n.days_remaining }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('item_controller.consume_item', id=n.item_id) }}">
+                                <button class="btn btn-sm btn-warning">Zużyj</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+    {% endif %}
+
+
+    <!-- ========================= -->
+    <!-- SEKCJA: INFO -->
+    <!-- ========================= -->
+    {% if grouped.info %}
+    <div class="alert alert-info mt-4">
+        <h4 class="alert-heading">🔵 Nadchodzące</h4>
+        <p>Przedmioty, które będą wymagały wymiany w ciągu 15–60 dni.</p>
+
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Przedmiot</th>
+                        <th>Strażak</th>
+                        <th>Data wydania</th>
+                        <th>Data wymiany</th>
+                        <th>Pozostało dni</th>
+                        <th>Akcja</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for n in grouped.info %}
+                    <tr>
+                        <td>{{ n.item_name }}</td>
+                        <td>{{ n.firefighter_name or "-" }}</td>
+                        <td>{{ n.issue_date }}</td>
+                        <td>{{ n.expiry_date }}</td>
+                        <td>{{ n.days_remaining }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('item_controller.consume_item', id=n.item_id) }}">
+                                <button class="btn btn-sm btn-outline-primary">Zużyj</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

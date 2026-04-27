@@ -1,0 +1,227 @@
+{% extends "mobile/base_mobile.html" %}
+{% block title %}Wydanie – Magazyn SP{% endblock %}
+
+{% block content %}
+
+<h3 class="mb-3">Wydanie przedmiotu</h3>
+
+<!-- KROK 1: Wybór przedmiotu -->
+<div class="mobile-card" id="step-item">
+    <h5 class="mb-3"><span class="badge bg-danger me-2">1</span> Wybierz przedmiot</h5>
+
+    <input type="text" id="search-items" class="form-control mb-3"
+           placeholder="Szukaj..." style="font-size:1.1rem; padding:12px;">
+
+    <div id="items-list" style="max-height:40vh; overflow-y:auto;">
+        {% for item in items %}
+        <div class="item-touch-row"
+             data-id="{{ item.item_id }}"
+             data-name="{{ item.name }}"
+             onclick="selectItem(this)">
+            <div style="font-size:1.1rem; font-weight:600;">{{ item.name }}</div>
+            <div class="text-muted" style="font-size:0.85rem;">
+                {{ item.unit_of_measure }}
+                {% if item.usage_period_months %}
+                    · {{ item.usage_period_months }} mies.
+                {% else %}
+                    · Do zużycia
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+        {% if not items %}
+        <div class="alert alert-info">Brak przedmiotów w magazynie.</div>
+        {% endif %}
+    </div>
+
+    <div id="selected-item-info" class="alert alert-success mt-3" style="display:none;">
+        Wybrано: <strong id="selected-item-name"></strong>
+    </div>
+</div>
+
+<!-- KROK 2: Skan NFC -->
+<div class="mobile-card" id="step-nfc" style="display:none;">
+    <h5 class="mb-3"><span class="badge bg-danger me-2">2</span> Zidentyfikuj strażaka</h5>
+
+    <div id="nfc-mode-info" class="alert alert-secondary py-2 mb-3" style="font-size:0.9rem;">
+        <span id="nfc-mode-label">
+            <i class="bi bi-hourglass-split"></i> Wykrywanie trybu NFC...
+        </span>
+    </div>
+
+    <div class="nfc-pulse" id="nfc-waiting">📡</div>
+    <p class="text-center text-muted">Przyłóż kartę NFC strażaka</p>
+
+    <input id="nfc-input" type="text" style="opacity:0; height:1px; width:1px; position:absolute;">
+
+    <div id="nfc-found" class="alert alert-success" style="display:none;">
+        <i class="bi bi-check-circle"></i>
+        Strażak: <strong id="nfc-firefighter-name"></strong>
+    </div>
+
+    <div id="nfc-error" class="alert alert-danger" style="display:none;">
+        <i class="bi bi-x-circle"></i> Karta NFC nieprzypisana do żadnego strażaka.
+    </div>
+
+    <div id="nfc-timeout-info" class="alert alert-warning" style="display:none;">
+        <i class="bi bi-clock"></i> Timeout – spróbuj ponownie.
+        <button class="btn btn-sm btn-warning ms-2" onclick="restartNFC()">Ponów</button>
+    </div>
+
+    <button type="button"
+            class="btn btn-outline-light btn-touch mt-2"
+            data-bs-toggle="modal" data-bs-target="#manualModal">
+        <i class="bi bi-list"></i> Wybierz strażaka ręcznie
+    </button>
+</div>
+
+<!-- KROK 3: Przycisk potwierdzenia -->
+<form id="confirm-form" method="POST"
+      action="{{ url_for('mobile_controller.mobile_confirm') }}"
+      style="display:none;">
+    <input type="hidden" name="item_id" id="form-item-id">
+    <input type="hidden" name="firefighter_id" id="form-firefighter-id">
+    <input type="hidden" name="nfc_scan" id="form-nfc-scan" value="false">
+
+    <button type="submit" class="btn btn-success btn-touch">
+        <i class="bi bi-arrow-right-circle" style="font-size:1.6rem;"></i>
+        Przejdź do potwierdzenia
+    </button>
+</form>
+
+<!-- MODAL: ręczny wybór strażaka -->
+{% set firefighters = [] %}
+<div class="modal fade" id="manualModal" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen-sm-down">
+        <div class="modal-content" style="background:#11284d; color:#fff;">
+            <div class="modal-header" style="border-color:#1a355c;">
+                <h5 class="modal-title">Wybierz strażaka</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="search-ff-modal" class="form-control mb-3"
+                       placeholder="Szukaj po nazwisku..."
+                       style="font-size:1.1rem; padding:12px; background:#1a355c; color:#fff; border:none;">
+                <div id="ff-modal-list" style="max-height:60vh; overflow-y:auto;">
+                    {% for ff in firefighters %}
+                    <div class="item-touch-row"
+                         data-id="{{ ff.firefighter_id }}"
+                         data-name="{{ ff.full_name|lower }}"
+                         onclick="selectFirefighterManual(this)">
+                        <strong>{{ ff.full_name }}</strong>
+                        {% if ff.has_nfc %}
+                            <span class="badge bg-success ms-2">NFC</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/nfc.js') }}"></script>
+<script>
+    let selectedItemId   = null;
+    let selectedFFId     = null;
+    let nfcReader        = null;
+
+    // ── wstępnie zaznacz przedmiot jeśli przekazany z backendu
+    {% if selected_item %}
+    window.addEventListener("DOMContentLoaded", () => {
+        const row = document.querySelector(`.item-touch-row[data-id="{{ selected_item.item_id }}"]`);
+        if (row) selectItem(row);
+    });
+    {% endif %}
+
+    // ── KROK 1: wybór przedmiotu
+    function selectItem(el) {
+        document.querySelectorAll(".item-touch-row").forEach(r => r.classList.remove("selected"));
+        el.classList.add("selected");
+        selectedItemId = el.dataset.id;
+        document.getElementById("selected-item-name").textContent = el.dataset.name;
+        document.getElementById("selected-item-info").style.display = "block";
+        document.getElementById("form-item-id").value = selectedItemId;
+
+        // Pokaż krok NFC
+        document.getElementById("step-nfc").style.display = "block";
+        document.getElementById("step-nfc").scrollIntoView({ behavior: "smooth" });
+
+        startNFC();
+    }
+
+    // ── filtrowanie listy przedmiotów
+    document.getElementById("search-items").addEventListener("input", function() {
+        const q = this.value.toLowerCase();
+        document.querySelectorAll(".item-touch-row").forEach(row => {
+            row.style.display = row.dataset.name.toLowerCase().includes(q) ? "" : "none";
+        });
+    });
+
+    // ── KROK 2: NFC
+    function startNFC() {
+        if (nfcReader) nfcReader.stopListening();
+
+        nfcReader = new NFCReader("nfc-input", (data) => {
+            fetch("/Sp/mobile/api/firefighter-by-nfc/" + encodeURIComponent(data.hash))
+                .then(res => res.ok ? res.json() : null)
+                .then(json => {
+                    if (json) {
+                        onFirefighterFound(json, true);
+                    } else {
+                        document.getElementById("nfc-error").style.display = "block";
+                        document.getElementById("nfc-found").style.display = "none";
+                        document.getElementById("confirm-form").style.display = "none";
+                    }
+                })
+                .catch(() => {
+                    document.getElementById("nfc-error").style.display = "block";
+                });
+        });
+
+        nfcReader.startListening();
+        document.getElementById("nfc-timeout-info").style.display = "none";
+        document.getElementById("nfc-error").style.display = "none";
+        document.getElementById("nfc-found").style.display = "none";
+    }
+
+    function restartNFC() {
+        document.getElementById("nfc-timeout-info").style.display = "none";
+        startNFC();
+    }
+
+    document.addEventListener("nfc-timeout", () => {
+        document.getElementById("nfc-timeout-info").style.display = "block";
+    });
+
+    // ── Znaleziono strażaka
+    function onFirefighterFound(json, viaNFC) {
+        selectedFFId = json.id;
+        document.getElementById("nfc-firefighter-name").textContent = json.full_name;
+        document.getElementById("nfc-found").style.display = "block";
+        document.getElementById("nfc-error").style.display = "none";
+        document.getElementById("nfc-waiting").style.display = "none";
+        document.getElementById("form-firefighter-id").value = json.id;
+        document.getElementById("form-nfc-scan").value = viaNFC ? "true" : "false";
+
+        document.getElementById("confirm-form").style.display = "block";
+        document.getElementById("confirm-form").scrollIntoView({ behavior: "smooth" });
+    }
+
+    // ── Ręczny wybór strażaka (modal)
+    document.getElementById("search-ff-modal").addEventListener("input", function() {
+        const q = this.value.toLowerCase();
+        document.querySelectorAll("#ff-modal-list .item-touch-row").forEach(row => {
+            row.style.display = row.dataset.name.includes(q) ? "" : "none";
+        });
+    });
+
+    function selectFirefighterManual(el) {
+        bootstrap.Modal.getInstance(document.getElementById("manualModal")).hide();
+        onFirefighterFound({ id: el.dataset.id, full_name: el.querySelector("strong").textContent }, false);
+    }
+</script>
+{% endblock %}

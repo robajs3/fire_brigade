@@ -1,0 +1,24 @@
+{% extends "mobile/base_mobile.html" %}
+{% block title %}Start – Magazyn SP{% endblock %}
+{% block content %}
+
+<h2 class="mb-3">Witaj 👋</h2>
+
+<div class="mobile-card text-center">
+    <div style="font-size:3rem; font-weight:700; color:#28a745;">{{ in_stock_count }}</div>
+    <div class="text-muted">przedmiotów w magazynie</div>
+</div>
+
+<a href="{{ url_for('mobile_controller.mobile_scan') }}"
+   class="btn btn-success btn-touch">
+    <i class="bi bi-box-arrow-right" style="font-size:1.6rem;"></i>
+    Wydaj przedmiot
+</a>
+
+<a href="{{ url_for('dashboard_controller.dashboard') }}"
+   class="btn btn-outline-light btn-touch">
+    <i class="bi bi-grid"></i>
+    Pełny panel zarządzania
+</a>
+
+{% endblock %}

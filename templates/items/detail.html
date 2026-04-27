@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Przedmiot: {{ item.name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    <!-- Nagłówek -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            Przedmiot: {{ item.name }}
+            {% if item.status_label == 'W magazynie' %}
+                <span class="badge bg-success">{{ item.status_label }}</span>
+            {% elif item.status_label == 'Wydany' %}
+                <span class="badge bg-info">{{ item.status_label }}</span>
+            {% else %}
+                <span class="badge bg-secondary">{{ item.status_label }}</span>
+            {% endif %}
+        </h2>
+    </div>
+
+    <div class="row">
+
+        <!-- LEWA KOLUMNA -->
+        <div class="col-md-5">
+
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    Dane przedmiotu
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <th>Nazwa</th>
+                                <td>{{ item.name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Jednostka miary</th>
+                                <td>{{ item.unit_of_measure }}</td>
+                            </tr>
+                            <tr>
+                                <th>Okres używania</th>
+                                <td>
+                                    {% if item.usage_period_months %}
+                                        {{ item.usage_period_months }} mies.
+                                    {% else %}
+                                        <span class="badge bg-secondary">Do zużycia</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Nr karty odzieżowej</th>
+                                <td>{{ item.clothing_card_number or "—" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Uwagi</th>
+                                <td>{{ item.notes or "—" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Data dodania</th>
+                                <td>{{ item.created_at.strftime('%d.%m.%Y') }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {% if item.is_issued %}
+            <div class="card border-primary mb-4">
+                <div class="card-header bg-primary text-white">
+                    Wydanie
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <th>Strażak</th>
+                                <td>
+                                    <a href="{{ url_for('firefighter_controller.firefighter_detail', id=item.firefighter.firefighter_id) }}">
+                                        {{ item.firefighter.full_name }}
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Data wydania</th>
+                                <td>{{ item.issue_date.strftime('%d.%m.%Y') }}</td>
+                            </tr>
+                            <tr>
+                                <th>Wygasa</th>
+                                <td>
+                                    {% if item.expiry_date %}
+                                        {{ item.expiry_date.strftime('%d.%m.%Y') }}
+                                    {% else %}
+                                        Bezterminowo
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Pozostało dni</th>
+                                <td>
+                                    {% if item.days_until_expiry is none %}
+                                        <span class="badge bg-secondary">—</span>
+                                    {% elif item.days_until_expiry <= 0 %}
+                                        <span class="badge bg-danger">{{ item.days_until_expiry }}</span>
+                                    {% elif item.days_until_expiry <= 14 %}
+                                        <span class="badge bg-warning text-dark">{{ item.days_until_expiry }}</span>
+                                    {% else %}
+                                        <span class="badge bg-success">{{ item.days_until_expiry }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+
+        <!-- PRAWA KOLUMNA – AKCJE -->
+        <div class="col-md-7">
+
+            <div class="card mb-4">
+                <div class="card-header bg-dark text-white">
+                    Akcje
+                </div>
+                <div class="card-body">
+
+                    {% if not item.is_consumed %}
+
+                        <!-- Edytuj -->
+                        <a href="{{ url_for('item_controller.edit_item_form', id=item.item_id) }}"
+                           class="btn btn-outline-secondary mb-3">
+                            ✏️ Edytuj
+                        </a>
+
+                        <br>
+
+                        {% if item.is_in_stock %}
+                            <!-- Wydaj -->
+                            <a href="{{ url_for('item_controller.issue_item_form', id=item.item_id) }}"
+                               class="btn btn-success btn-lg mb-3">
+                                📦 Wydaj strażakowi
+                            </a>
+                            <br>
+                        {% endif %}
+
+                        {% if item.is_issued %}
+                            <!-- Zwrot -->
+                            <form method="POST"
+                                  action="{{ url_for('item_controller.return_item', id=item.item_id) }}"
+                                  class="d-inline"
+                                  onsubmit="return confirm('Czy na pewno zwrócić przedmiot do magazynu?');">
+                                <button class="btn btn-warning mb-3">↩️ Zwróć do magazynu</button>
+                            </form>
+
+                            <!-- Zużyj -->
+                            <form method="POST"
+                                  action="{{ url_for('item_controller.consume_item', id=item.item_id) }}"
+                                  class="d-inline"
+                                  onsubmit="return confirm('Czy na pewno oznaczyć przedmiot jako zużyty? Tej operacji nie można cofnąć.');">
+                                <button class="btn btn-danger mb-3">🗑️ Oznacz jako zużyty</button>
+                            </form>
+                        {% endif %}
+
+                    {% else %}
+                        <div class="alert alert-secondary mb-3">
+                            Przedmiot zużyty – brak dostępnych akcji.
+                        </div>
+                    {% endif %}
+
+                    <!-- Usuń – zawsze widoczny dla admina -->
+                    {% if user and user.role == 'admin' %}
+                    <hr>
+                    <form method="POST"
+                          action="{{ url_for('item_controller.delete_item', id=item.item_id) }}"
+                          class="d-inline"
+                          onsubmit="return confirm('Czy na pewno USUNĄĆ przedmiot {{ item.name }}? Tej operacji nie można cofnąć.');">
+                        <button class="btn btn-outline-danger btn-sm">
+                            🗑️ Usuń przedmiot z systemu
+                        </button>
+                    </form>
+                    {% endif %}
+
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- HISTORIA WYDAŃ -->
+    <div class="card mt-4">
+        <div class="card-header bg-secondary text-white">
+            Historia wydań
+        </div>
+        <div class="card-body p-0">
+            {% if item_log %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Data</th>
+                            <th>Akcja</th>
+                            <th>Strażak</th>
+                            <th>Wykonał</th>
+                            <th>Sposób identyfikacji</th>
+                            <th>Uwagi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log, firefighter, user in item_log %}
+                        <tr>
+                            <td>{{ log.performed_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>
+                                {% if log.action == 'issued' %}
+                                    <span class="badge bg-info">Wydanie</span>
+                                {% elif log.action == 'returned' %}
+                                    <span class="badge bg-warning text-dark">Zwrot</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Zużycie</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ firefighter.full_name if firefighter else "—" }}</td>
+                            <td>{{ user.full_name if user else "—" }}</td>
+                            <td>
+                                {% if log.nfc_scan %}
+                                    <span class="badge bg-success">🔖 NFC</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Ręcznie</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ log.notes or "—" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted p-3">Brak historii dla tego przedmiotu.</p>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

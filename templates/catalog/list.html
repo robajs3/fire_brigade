@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Słownik przedmiotów{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Słownik przedmiotów</h2>
+        {% if user and user.role in ['admin', 'manager'] %}
+        <a href="{{ url_for('catalog_controller.add_catalog_form') }}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Dodaj pozycję
+        </a>
+        {% endif %}
+    </div>
+
+    {% if not entries %}
+        <div class="alert alert-info">Katalog jest pusty.</div>
+    {% else %}
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-striped table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Nazwa</th>
+                        <th>Jednostka</th>
+                        <th>Okres używania</th>
+                        <th>Domyślne uwagi</th>
+                        <th>Status</th>
+                        <th>W magazynie</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in entries %}
+                    <tr>
+                        <td><strong>{{ entry.name }}</strong></td>
+                        <td>{{ entry.unit_of_measure }}</td>
+                        <td>
+                            {% if entry.usage_period_months %}
+                                {{ entry.usage_period_months }} mies.
+                            {% else %}
+                                <span class="badge bg-secondary">Do zużycia</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted">{{ entry.default_notes or "—" }}</td>
+                        <td>
+                            {% if entry.is_active %}
+                                <span class="badge bg-success">Aktywna</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Nieaktywna</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-primary">
+                                {{ entry.items.filter_by(is_consumed=False, firefighter_id=None).count() }} szt.
+                            </span>
+                        </td>
+                        <td>
+                            {% if user and user.role in ['admin', 'manager'] %}
+                            <a href="{{ url_for('catalog_controller.edit_catalog_form', id=entry.catalog_id) }}"
+                               class="btn btn-sm btn-outline-secondary me-1">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            {% endif %}
+                            {% if user and user.role == 'admin' %}
+                            <form method="POST"
+                                  action="{{ url_for('catalog_controller.delete_catalog', id=entry.catalog_id) }}"
+                                  style="display:inline"
+                                  onsubmit="return confirm('Usunąć pozycję {{ entry.name }}?')">
+                                <button type="submit" class="btn btn-sm btn-danger">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

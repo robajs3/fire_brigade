@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}Dodaj przedmiot{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Dodaj przedmiot do magazynu</h2>
+
+    <form method="POST" action="{{ url_for('item_controller.add_item_post') }}">
+
+        <!-- WYBÓR Z KATALOGU -->
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-journal-text"></i> Wybierz z katalogu
+            </div>
+            <div class="card-body">
+
+                {% if catalog %}
+
+                <div id="selected-catalog-info" class="alert alert-success mb-3" style="display:none;">
+                    Wybrano: <strong id="selected-catalog-name"></strong>
+                    <button type="button" class="btn btn-sm btn-outline-danger ms-3"
+                            onclick="clearCatalog()">Wyczyść</button>
+                </div>
+
+                <input type="hidden" name="catalog_id" id="catalog_id">
+
+                <table id="catalog-table" class="table table-hover table-sm" style="width:100%">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nazwa</th>
+                            <th>Jednostka</th>
+                            <th>Okres użytkowania</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in catalog %}
+                        <tr style="cursor:pointer;"
+                            data-id="{{ entry.catalog_id }}"
+                            data-name="{{ entry.name }}"
+                            data-unit="{{ entry.unit_of_measure }}"
+                            data-usage="{{ entry.usage_period_months or '' }}"
+                            data-notes="{{ entry.default_notes or '' }}">
+                            <td>{{ entry.name }}</td>
+                            <td>{{ entry.unit_of_measure }}</td>
+                            <td>
+                                {% if entry.usage_period_months %}
+                                    {{ entry.usage_period_months }} mies.
+                                {% else %}
+                                    <span class="badge bg-secondary">Do zużycia</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                {% else %}
+                <div class="alert alert-info">Katalog jest pusty.</div>
+                {% endif %}
+
+            </div>
+        </div>
+
+        <!-- DANE RĘCZNE -->
+        <div class="card mb-4 shadow-sm" id="manual-section">
+            <div class="card-header bg-secondary text-white">
+                <i class="bi bi-pencil"></i> Lub wpisz ręcznie
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Nazwa <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="field-name" class="form-control"
+                               placeholder="Np. Kurtka bojowa">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Jednostka miary</label>
+                        <select name="unit_of_measure" id="field-unit" class="form-select">
+                            <option value="szt">szt</option>
+                            <option value="para">para</option>
+                            <option value="kpl">kpl</option>
+                            <option value="kg">kg</option>
+                            <option value="l">l</option>
+                            <option value="m">m</option>
+                            <option value="opakowanie">opakowanie</option>
+                            <option value="komplet">komplet</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Okres używania (miesiące)</label>
+                    <input type="number" name="usage_period_months" id="field-usage"
+                           class="form-control" min="1"
+                           placeholder="Pozostaw puste – oznacza 'do zużycia'">
+                </div>
+            </div>
+        </div>
+
+        <!-- ILOŚĆ + DODATKOWE -->
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <i class="bi bi-boxes"></i> Ilość i szczegóły
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Ilość sztuk <span class="text-danger">*</span></label>
+                        <input type="number" name="count" class="form-control form-control-lg"
+                               value="1" min="1" max="500" required>
+                        <div class="form-text">Maksymalnie 500 szt. na raz</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Nr karty odzieżowej <span class="text-muted">(opcjonalne)</span></label>
+                        <input type="text" name="clothing_card_number" class="form-control">
+                    </div>
+                    <div class="col-md-5 mb-3">
+                        <label class="form-label">Uwagi <span class="text-muted">(opcjonalne)</span></label>
+                        <textarea name="notes" id="field-notes" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success btn-lg">
+                <i class="bi bi-plus-circle"></i> Dodaj do magazynu
+            </button>
+            <a href="{{ url_for('item_controller.items_list') }}"
+               class="btn btn-outline-secondary btn-lg">Anuluj</a>
+        </div>
+
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+$(document).ready(function() {
+
+    var table = $('#catalog-table').DataTable({
+        language: {
+            search: "Szukaj w katalogu:",
+            zeroRecords: "Brak wyników",
+            info: "Pozycji: _TOTAL_",
+            infoFiltered: "z _MAX_",
+            infoEmpty: "Brak"
+        },
+        paging: false,
+        scrollY: '300px',
+        scrollCollapse: true,
+        dom: 'frtip'
+    });
+
+    // Kliknięcie w wiersz katalogu
+    $('#catalog-table tbody').on('click', 'tr', function() {
+        var data = $(this).data();
+
+        // Podświetl wybrany wiersz
+        $('#catalog-table tbody tr').removeClass('table-success');
+        $(this).addClass('table-success');
+
+        // Ustaw wartości
+        $('#catalog_id').val(data.id);
+        $('#selected-catalog-name').text(data.name);
+        $('#selected-catalog-info').show();
+        $('#manual-section').hide();
+
+        $('#field-name').val(data.name);
+        $('#field-unit').val(data.unit);
+        $('#field-usage').val(data.usage);
+        if (data.notes && !$('#field-notes').val()) {
+            $('#field-notes').val(data.notes);
+        }
+    });
+
+    // Blokuj Enter w polu wyszukiwania DataTables
+    $('#catalog-table_filter input').on('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    });
+});
+
+function clearCatalog() {
+    $('#catalog_id').val('');
+    $('#selected-catalog-info').hide();
+    $('#catalog-table tbody tr').removeClass('table-success');
+    $('#manual-section').show();
+    $('#field-name').val('');
+    $('#field-usage').val('');
+    $('#field-notes').val('');
+}
+</script>
+{% endblock %}

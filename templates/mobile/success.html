@@ -1,0 +1,40 @@
+{% extends "mobile/base_mobile.html" %}
+{% block title %}Wydano – Magazyn SP{% endblock %}
+{% block content %}
+
+<div class="text-center">
+    <div class="success-icon">✅</div>
+    <h2 class="mb-2">Wydano!</h2>
+    <p class="text-muted mb-4">Operacja zakończona pomyślnie</p>
+</div>
+
+<div class="mobile-card">
+    <div class="mb-3">
+        <div class="text-muted" style="font-size:0.85rem;">PRZEDMIOT</div>
+        <div style="font-size:1.2rem; font-weight:700;">{{ item.name }}</div>
+    </div>
+    <hr style="border-color:#1a355c;">
+    <div>
+        <div class="text-muted" style="font-size:0.85rem;">WYDANO DLA</div>
+        <div style="font-size:1.2rem; font-weight:700;">{{ firefighter.full_name }}</div>
+    </div>
+    {% if item.issue_date %}
+    <hr style="border-color:#1a355c;">
+    <div>
+        <div class="text-muted" style="font-size:0.85rem;">DATA WYDANIA</div>
+        <div>{{ item.issue_date.strftime('%d.%m.%Y') }}</div>
+    </div>
+    {% endif %}
+</div>
+
+<a href="{{ url_for('mobile_controller.mobile_scan') }}"
+   class="btn btn-success btn-touch">
+    <i class="bi bi-box-arrow-right"></i> Wydaj kolejny
+</a>
+
+<a href="{{ url_for('mobile_controller.mobile_dashboard') }}"
+   class="btn btn-outline-light btn-touch">
+    <i class="bi bi-house"></i> Powrót do startu
+</a>
+
+{% endblock %}
