@@ -147,13 +147,6 @@
                         {% endif %}
 
                         {% if item.is_issued %}
-                            <!-- Zwrot -->
-                            <form method="POST"
-                                  action="{{ url_for('item_controller.return_item', id=item.item_id) }}"
-                                  class="d-inline"
-                                  onsubmit="return confirm('Czy na pewno zwrócić przedmiot do magazynu?');">
-                                <button class="btn btn-warning mb-3">↩️ Zwróć do magazynu</button>
-                            </form>
 
                             <!-- Zużyj -->
                             <form method="POST"
@@ -174,13 +167,14 @@
                     {% if user and user.role == 'admin' %}
                     <hr>
                     <form method="POST"
-                          action="{{ url_for('item_controller.delete_item', id=item.item_id) }}"
-                          class="d-inline"
-                          onsubmit="return confirm('Czy na pewno USUNĄĆ przedmiot {{ item.name }}? Tej operacji nie można cofnąć.');">
-                        <button class="btn btn-outline-danger btn-sm">
-                            🗑️ Usuń przedmiot z systemu
-                        </button>
-                    </form>
+      action="{{ url_for('item_controller.delete_item', id=item.item_id) }}"
+      class="d-inline"
+      onsubmit="return confirm('Czy na pewno USUNĄĆ przedmiot {{ item.name }}? Tej operacji nie można cofnąć.');">
+    <input type="hidden" name="next" value="{{ url_for('firefighter_controller.firefighters_list') }}">
+    <button class="btn btn-outline-danger btn-sm">
+        🗑️ Usuń przedmiot z systemu
+    </button>
+</form>
                     {% endif %}
 
                 </div>
@@ -216,8 +210,6 @@
                             <td>
                                 {% if log.action == 'issued' %}
                                     <span class="badge bg-info">Wydanie</span>
-                                {% elif log.action == 'returned' %}
-                                    <span class="badge bg-warning text-dark">Zwrot</span>
                                 {% else %}
                                     <span class="badge bg-secondary">Zużycie</span>
                                 {% endif %}

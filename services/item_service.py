@@ -29,9 +29,6 @@ class ItemService:
     def get_by_id(item_id):
         return Item.query.get(item_id)
 
-    # -------------------------------
-    # UPDATED CREATE
-    # -------------------------------
     @staticmethod
     def create(name, unit_of_measure, usage_period_months=None,
                clothing_card_number=None, notes=None, catalog_id=None):
@@ -52,14 +49,10 @@ class ItemService:
             db.session.rollback()
             return None
 
-    # -------------------------------
-    # NEW: CREATE BULK
-    # -------------------------------
     @staticmethod
     def create_bulk(name, unit_of_measure, count,
                     usage_period_months=None, clothing_card_number=None,
                     notes=None, catalog_id=None):
-        """Tworzy <count> identycznych przedmiotów naraz."""
         if count < 1 or count > 500:
             return []
 
@@ -111,13 +104,25 @@ class ItemService:
     def issue_item(item_id, firefighter_id, issue_date,
                    performed_by_user_id,
                    clothing_card_number=None, notes=None, nfc_scan=False):
+
         item = ItemService.get_by_id(item_id)
         if not item or item.is_consumed:
             return None
 
+        if item.catalog_id:
+            existing = Item.query.filter_by(
+                firefighter_id=firefighter_id,
+                catalog_id=item.catalog_id,
+                is_consumed=False
+            ).first()
+
+            if existing:
+                return existing
+
         try:
             item.firefighter_id = firefighter_id
             item.issue_date = issue_date
+
             if clothing_card_number:
                 item.clothing_card_number = clothing_card_number
             if notes:
@@ -131,9 +136,11 @@ class ItemService:
                 nfc_scan=nfc_scan,
                 notes=notes
             )
+
             db.session.add(log)
             db.session.commit()
             return item
+
         except SQLAlchemyError:
             db.session.rollback()
             return None
@@ -145,19 +152,24 @@ class ItemService:
             return None
 
         try:
+            # Zapisz strażaka PRZED wyzerowaniem – żeby log miał info kto oddał
+            previous_firefighter_id = item.firefighter_id
+
             item.firefighter_id = None
             item.issue_date = None
 
             log = IssuanceLog(
                 item_id=item_id,
-                firefighter_id=None,
+                firefighter_id=previous_firefighter_id,
                 action="returned",
                 performed_by=performed_by_user_id,
                 notes=notes
             )
+
             db.session.add(log)
             db.session.commit()
             return item
+
         except SQLAlchemyError:
             db.session.rollback()
             return None
@@ -169,20 +181,25 @@ class ItemService:
             return None
 
         try:
+            # Zapisz strażaka PRZED wyzerowaniem – żeby log miał info kto zużył
+            previous_firefighter_id = item.firefighter_id
+
             item.is_consumed = True
             item.firefighter_id = None
             item.issue_date = None
 
             log = IssuanceLog(
                 item_id=item_id,
-                firefighter_id=None,
+                firefighter_id=previous_firefighter_id,
                 action="consumed",
                 performed_by=performed_by_user_id,
                 notes=notes
             )
+
             db.session.add(log)
             db.session.commit()
             return item
+
         except SQLAlchemyError:
             db.session.rollback()
             return None
@@ -192,12 +209,14 @@ class ItemService:
         result = []
         today = date.today()
         items = Item.query.filter_by(is_consumed=False).all()
+
         for item in items:
             expiry = item.expiry_date
             if expiry:
                 delta = (expiry - today).days
                 if 0 <= delta <= days:
                     result.append(item)
+
         return result
 
     @staticmethod
@@ -212,10 +231,12 @@ class ItemService:
             item = Item.query.get(item_id)
             if not item:
                 return False
+
             IssuanceLog.query.filter_by(item_id=item_id).delete()
             db.session.delete(item)
             db.session.commit()
             return True
+
         except Exception:
             db.session.rollback()
             return False

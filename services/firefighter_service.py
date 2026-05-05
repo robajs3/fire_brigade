@@ -24,7 +24,8 @@ class FirefighterService:
     def create(first_name, last_name,
                nfc_username=None, nfc_hash=None,
                height_cm=None, chest_cm=None, waist_cm=None,
-               hat_size=None, shirt_size=None, shoe_size=None):
+               hat_size=None, shirt_size=None, shoe_size=None,
+               role="strazak"):
         try:
             nfc_hash     = nfc_hash.strip()     or None if nfc_hash     else None
             nfc_username = nfc_username.strip() or None if nfc_username else None
@@ -40,6 +41,7 @@ class FirefighterService:
                 hat_size=hat_size or None,
                 shirt_size=shirt_size or None,
                 shoe_size=shoe_size or None,
+                role=role,
                 is_active=True
             )
             db.session.add(firefighter)
@@ -58,7 +60,7 @@ class FirefighterService:
         allowed_fields = {
             "first_name", "last_name",
             "nfc_username", "nfc_hash",
-            "is_active",
+            "is_active", "role",
             "height_cm", "chest_cm", "waist_cm",
             "hat_size", "shirt_size", "shoe_size"
         }
@@ -118,7 +120,6 @@ class FirefighterService:
             if not ff:
                 return False
 
-            # Blokuj tylko gdy strażak ma aktywnie wydane przedmioty
             has_issued = ff.items.filter(
                 Item.is_consumed == False,
                 Item.firefighter_id == firefighter_id
@@ -127,7 +128,6 @@ class FirefighterService:
             if has_issued:
                 return False
 
-            # Wyzeruj firefighter_id w logach przed usunięciem
             IssuanceLog.query.filter_by(firefighter_id=firefighter_id).update(
                 {"firefighter_id": None}
             )

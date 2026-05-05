@@ -209,7 +209,7 @@ def edit_item_form(id):
 def edit_item_post(id):
     name = request.form.get("name")
     unit = request.form.get("unit_of_measure")
-    usage = request.form.get("usage_period_months")
+    usage = request.form.get("usage_period_months")     
     clothing = request.form.get("clothing_card_number")
     notes = request.form.get("notes")
 
@@ -335,9 +335,10 @@ def consume_item(id):
 @item_bp.route("/items/<int:id>/delete", methods=["POST"])
 @role_required(["admin"])
 def delete_item(id):
+    next_url = request.form.get("next", url_for("item_controller.items_list"))
     result = ItemService.delete(id)
     if result:
         flash("Przedmiot został usunięty.", "success")
     else:
         flash("Błąd podczas usuwania przedmiotu.", "danger")
-    return redirect(url_for("item_controller.items_list"))
+    return redirect(next_url)

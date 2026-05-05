@@ -24,7 +24,6 @@
                         <th>Okres używania</th>
                         <th>Domyślne uwagi</th>
                         <th>Status</th>
-                        <th>W magazynie</th>
                         <th>Akcje</th>
                     </tr>
                 </thead>
@@ -47,11 +46,6 @@
                             {% else %}
                                 <span class="badge bg-secondary">Nieaktywna</span>
                             {% endif %}
-                        </td>
-                        <td>
-                            <span class="badge bg-primary">
-                                {{ entry.items.filter_by(is_consumed=False, firefighter_id=None).count() }} szt.
-                            </span>
                         </td>
                         <td>
                             {% if user and user.role in ['admin', 'manager'] %}

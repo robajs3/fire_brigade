@@ -7,34 +7,33 @@
 <div class="mobile-card">
     <div class="mb-3">
         <div class="text-muted" style="font-size:0.85rem;">PRZEDMIOT</div>
-        <div style="font-size:1.3rem; font-weight:700;">{{ item.name }}</div>
-        <div class="text-muted">{{ item.unit_of_measure }}</div>
+        <div style="font-size:1.3rem; font-weight:700;">{{ catalog_entry.name }}</div>
+        <div class="text-muted">{{ catalog_entry.unit_of_measure }}</div>
     </div>
     <hr style="border-color:#1a355c;">
     <div>
         <div class="text-muted" style="font-size:0.85rem;">STRAŻAK</div>
         <div style="font-size:1.3rem; font-weight:700;">{{ firefighter.full_name }}</div>
-        {% if nfc_scan %}
-            <span class="badge bg-success"><i class="bi bi-nfc"></i> Zidentyfikowany przez NFC</span>
-        {% else %}
-            <span class="badge bg-secondary">Wybrano ręcznie</span>
-        {% endif %}
+        <div class="text-muted">{{ firefighter.role_label }}</div>
     </div>
 </div>
 
 <form method="POST" action="{{ url_for('mobile_controller.mobile_issue') }}">
-    <input type="hidden" name="item_id" value="{{ item.item_id }}">
     <input type="hidden" name="firefighter_id" value="{{ firefighter.firefighter_id }}">
+    <input type="hidden" name="catalog_id" value="{{ catalog_entry.catalog_id }}">
     <input type="hidden" name="nfc_scan" value="{{ 'true' if nfc_scan else 'false' }}">
-
+    
     <div class="mobile-card">
         <div class="mb-3">
             <label class="form-label">Data wydania</label>
             <input type="date" name="issue_date" class="form-control form-control-lg"
-                   value="{{ today }}" style="background:#1a355c; color:#fff; border:none;">
+                   value="{{ today }}"
+                   style="background:#1a355c; color:#fff; border:none;">
         </div>
         <div class="mb-3">
-            <label class="form-label">Nr karty odzieżowej <span class="text-muted">(opcjonalne)</span></label>
+            <label class="form-label">Nr karty odzieżowej
+                <span class="text-muted">(opcjonalne)</span>
+            </label>
             <input type="text" name="clothing_card_number" class="form-control form-control-lg"
                    style="background:#1a355c; color:#fff; border:none;">
         </div>
@@ -51,7 +50,7 @@
     </button>
 </form>
 
-<a href="{{ url_for('mobile_controller.mobile_scan') }}"
+<a href="{{ url_for('mobile_controller.mobile_firefighter', firefighter_id=firefighter.firefighter_id) }}"
    class="btn btn-outline-light btn-touch">
     <i class="bi bi-arrow-left"></i> Wróć
 </a>

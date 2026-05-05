@@ -7,11 +7,13 @@
     <form method="POST" action="{{ url_for('catalog_controller.edit_catalog_post', id=entry.catalog_id) }}">
         <div class="card shadow-sm">
             <div class="card-body">
+
                 <div class="mb-3">
                     <label class="form-label">Nazwa <span class="text-danger">*</span></label>
                     <input type="text" name="name" class="form-control"
                            value="{{ entry.name }}" required>
                 </div>
+
                 <div class="mb-3">
                     <label class="form-label">Jednostka miary</label>
                     <select name="unit_of_measure" class="form-select">
@@ -20,21 +22,83 @@
                         {% endfor %}
                     </select>
                 </div>
+
                 <div class="mb-3">
                     <label class="form-label">Okres używania (miesiące)</label>
                     <input type="number" name="usage_period_months" class="form-control"
                            min="1" value="{{ entry.usage_period_months or '' }}"
                            placeholder="Pozostaw puste – 'do zużycia'">
                 </div>
+
                 <div class="mb-3">
                     <label class="form-label">Domyślne uwagi</label>
                     <textarea name="default_notes" class="form-control" rows="2">{{ entry.default_notes or '' }}</textarea>
                 </div>
+
                 <div class="form-check">
                     <input type="checkbox" name="is_active" class="form-check-input"
                            id="is_active" {% if entry.is_active %}checked{% endif %}>
                     <label class="form-check-label" for="is_active">Aktywna</label>
                 </div>
+
+            </div>
+        </div>
+
+        <!-- Sekcja wymagań per rola -->
+        <div class="card shadow-sm mt-3">
+            <div class="card-header bg-dark text-white">
+                <i class="bi bi-person-badge"></i> Przypisanie do ról
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">Zaznacz role dla których ten przedmiot jest wymagany lub opcjonalny.</p>
+
+                <table class="table table-bordered align-middle">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>Rola</th>
+                            <th style="width:80px; text-align:center;">Aktywna</th>
+                            <th style="width:100px;">Ilość</th>
+                            <th style="width:150px;">Typ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for role in roles %}
+                        {% set req = requirements.get(role) %}
+                        <tr>
+                            <td>{{ role_labels[role] }}</td>
+
+                            <td class="text-center">
+                                <input type="checkbox" name="role_{{ role }}"
+                                       class="form-check-input role-check"
+                                       data-role="{{ role }}"
+                                       {% if req %}checked{% endif %}>
+                            </td>
+
+                            <td>
+                                <input type="number" name="qty_{{ role }}"
+                                       class="form-control form-control-sm role-field-{{ role }}"
+                                       value="{{ req.quantity if req else 1 }}"
+                                       min="1"
+                                       {% if not req %}disabled{% endif %}>
+                            </td>
+
+                            <td>
+                                <select name="req_{{ role }}"
+                                        class="form-select form-select-sm role-field-{{ role }}"
+                                        {% if not req %}disabled{% endif %}>
+                                    <option value="required" {% if req and req.is_required %}selected{% endif %}>
+                                        Wymagany
+                                    </option>
+                                    <option value="optional" {% if req and not req.is_required %}selected{% endif %}>
+                                        Opcjonalny (jeśli potrzeba)
+                                    </option>
+                                </select>
+                            </td>
+
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -47,4 +111,17 @@
         </div>
     </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll(".role-check").forEach(cb => {
+    cb.addEventListener("change", function() {
+        const role = this.dataset.role;
+        document.querySelectorAll(`.role-field-${role}`).forEach(el => {
+            el.disabled = !this.checked;
+        });
+    });
+});
+</script>
 {% endblock %}

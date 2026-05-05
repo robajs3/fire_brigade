@@ -2,33 +2,39 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=1280">
     <title>{% block title %}Magazyn ZSR PCC Rokita{% endblock %}</title>
 
     <!-- Bootstrap 5.3 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
     <style>
         body {
             background-color: #f5f5f5;
         }
         .navbar {
-            background-color: #8b0000; /* ciemnoczerwony */
+            background-color: #8b0000;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
         }
         .sidebar {
             width: 240px;
-            background-color: #0a1a33; /* granatowy */
+            background-color: #0a1a33;
             min-height: 100vh;
             position: fixed;
             top: 56px;
             left: 0;
             padding-top: 1rem;
             color: #fff;
+            z-index: 100;
         }
         .sidebar a {
             color: #cfd8e3;
@@ -54,7 +60,25 @@
         .submenu {
             padding-left: 20px;
         }
+
+        /* Tryb mobilny – tylko gdy użytkownik wybrał widok mobilny */
+        body.mobile-view .sidebar {
+            display: none;
+        }
+        body.mobile-view .content-wrapper {
+            margin-left: 0;
+            padding: 10px;
+        }
     </style>
+
+    <!-- Zastosuj klasę mobile-view zanim strona się wyrenderuje żeby nie było migotania -->
+    <script>
+        if (localStorage.getItem("view-mode") === "mobile") {
+            document.addEventListener("DOMContentLoaded", function() {
+                document.body.classList.add("mobile-view");
+            });
+        }
+    </script>
 </head>
 
 <body>
@@ -67,17 +91,17 @@
         </span>
 
         <div class="d-flex align-items-center gap-3">
-    <span class="text-white">
-        <i class="bi bi-person-circle me-1"></i>
-        {{ user.full_name_or_username if user else '' }}
-    </span>
-    {% if user %}
-    <a href="{{ url_for('user_controller.logout') }}"
-       class="btn btn-outline-light btn-sm">
-        <i class="bi bi-box-arrow-right"></i> Wyloguj
-    </a>
-    {% endif %}
-</div>
+            <span class="text-white">
+                <i class="bi bi-person-circle me-1"></i>
+                {{ user.full_name_or_username if user else '' }}
+            </span>
+            {% if user %}
+            <a href="{{ url_for('user_controller.logout') }}"
+               class="btn btn-outline-light btn-sm">
+                <i class="bi bi-box-arrow-right"></i> Wyloguj
+            </a>
+            {% endif %}
+        </div>
     </div>
 </nav>
 
@@ -94,21 +118,16 @@
         <i class="bi bi-people"></i> Strażacy
     </a>
 
-    <!-- MAGAZYN -->
     <a href="#" class="fw-bold mt-2">
         <i class="bi bi-box-seam"></i> Magazyn
     </a>
     <div class="submenu">
-        <a href="{{ url_for('item_controller.items_list') }}"
-           class="{% if request.endpoint == 'item_controller.items_list' %}active{% endif %}">
-            Wszystkie przedmioty
-        </a>
         <a href="{{ url_for('item_controller.items_consumed') }}"
            class="{% if request.endpoint == 'item_controller.items_consumed' %}active{% endif %}">
             Zużyte
         </a>
         <a href="{{ url_for('catalog_controller.catalog_list') }}"
-            class="{% if request.endpoint and 'catalog_controller' in request.endpoint %}active{% endif %}">
+           class="{% if request.endpoint and 'catalog_controller' in request.endpoint %}active{% endif %}">
             Słownik przedmiotów
         </a>
     </div>
@@ -125,17 +144,31 @@
         <i class="bi bi-bell"></i> Powiadomienia
         <span id="notif-badge" class="badge bg-danger ms-2" style="display:none;">0</span>
     </a>
-    <a href="{{ url_for('mobile_controller.mobile_dashboard') }}"
-        class="{% if request.endpoint and 'mobile_controller' in request.endpoint %}active{% endif %}">
+
+    <a href="{{ url_for('dashboard_controller.dashboard') }}?mobile=1">
         <i class="bi bi-tablet"></i> Widok mobilny
     </a>
+
+    {% if user and user.role in ['admin', 'manager'] %}
+<a href="{{ url_for('log_controller.logs_list') }}"
+   class="{% if request.endpoint == 'log_controller.logs_list' %}active{% endif %}">
+    <i class="bi bi-journal-text"></i> Logi operacji
+</a>
+{% endif %}
+
+    <!-- Przełącznik widoku desktop/mobile -->
+    <div style="padding: 10px 18px; margin-top: auto; border-top: 1px solid #1a355c; position: absolute; bottom: 0; width: 100%;">
+        <button id="toggle-view-btn" onclick="toggleViewMode()"
+                class="btn btn-sm btn-outline-light w-100">
+            <i class="bi bi-phone"></i> Przełącz widok
+        </button>
+    </div>
 
 </div>
 
 <!-- MAIN CONTENT -->
 <div class="content-wrapper">
 
-    <!-- FLASH MESSAGES -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <div class="mb-3">
@@ -156,7 +189,6 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-    // Ładowanie liczby powiadomień do badge
     function loadNotificationsCount() {
         fetch("/Sp/api/notifications/count")
             .then(res => res.json())
@@ -173,7 +205,17 @@
     }
 
     loadNotificationsCount();
-    setInterval(loadNotificationsCount, 30000); // odświeżanie co 30s
+    setInterval(loadNotificationsCount, 30000);
+
+    function toggleViewMode() {
+        const isMobile = document.body.classList.toggle("mobile-view");
+        localStorage.setItem("view-mode", isMobile ? "mobile" : "desktop");
+    }
+
+    // Zastosuj zapisany tryb widoku
+    if (localStorage.getItem("view-mode") === "mobile") {
+        document.body.classList.add("mobile-view");
+    }
 </script>
 
 {% block scripts %}{% endblock %}

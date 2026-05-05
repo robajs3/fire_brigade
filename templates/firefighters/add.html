@@ -14,19 +14,29 @@
         <!-- ========================= -->
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
-                Dane strażaka
+            Dane strażaka
             </div>
             <div class="card-body">
 
-                <div class="mb-3">
-                    <label class="form-label">Imię *</label>
-                    <input type="text" name="first_name" class="form-control" required>
-                </div>
+            <div class="mb-3">
+                <label class="form-label">Imię *</label>
+                <input type="text" name="first_name" class="form-control" required>
+            </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Nazwisko *</label>
-                    <input type="text" name="last_name" class="form-control" required>
-                </div>
+            <div class="mb-3">
+                <label class="form-label">Nazwisko *</label>
+                <input type="text" name="last_name" class="form-control" required>
+            </div>
+<div class="mb-3">
+    <label class="form-label">Rola <span class="text-danger">*</span></label>
+    <select name="role" class="form-select" required>
+        <option value="kierownik_gbr">Kierownik GBR</option>
+        <option value="strazak" selected>
+            Strażak
+        </option>
+        <option value="ratownik_medyczny">Ratownik Medyczny (Pielęgniarz)</option>
+    </select>
+</div>
 
             </div>
         </div>

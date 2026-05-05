@@ -90,6 +90,27 @@ class Item(db.Model):
         }
 
 
+class RoleRequiredItem(db.Model):
+    __tablename__ = "role_required_items"
+
+    id          = db.Column(db.Integer, primary_key=True)
+    catalog_id  = db.Column(db.Integer, db.ForeignKey("item_catalog.catalog_id", ondelete="CASCADE"), nullable=False)
+    role        = db.Column(db.String(30), nullable=False)
+    quantity    = db.Column(db.Integer, nullable=False, default=1)
+    is_required = db.Column(db.Boolean, nullable=False, default=True)
+
+    catalog_item = db.relationship("ItemCatalog", backref="role_requirements")
+
+    def to_dict(self):
+        return {
+            "id":          self.id,
+            "catalog_id":  self.catalog_id,
+            "role":        self.role,
+            "quantity":    self.quantity,
+            "is_required": self.is_required,
+        }
+
+
 class IssuanceLog(db.Model):
     __tablename__ = "issuance_log"
 

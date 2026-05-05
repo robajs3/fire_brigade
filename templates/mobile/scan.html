@@ -1,117 +1,82 @@
 {% extends "mobile/base_mobile.html" %}
-{% block title %}Wydanie – Magazyn SP{% endblock %}
+{% block title %}Skan NFC{% endblock %}
 
 {% block content %}
+<h3 class="mb-3" style="color:#fff;">Zidentyfikuj strażaka</h3>
+<p style="color:red; font-size:1.2rem;">Strażaków: {{ firefighters|length }}</p>
 
-<h3 class="mb-3">Wydanie przedmiotu</h3>
+<div class="mobile-card" style="background:#11284d;">
 
-<!-- KROK 1: Wybór przedmiotu -->
-<div class="mobile-card" id="step-item">
-    <h5 class="mb-3"><span class="badge bg-danger me-2">1</span> Wybierz przedmiot</h5>
-
-    <input type="text" id="search-items" class="form-control mb-3"
-           placeholder="Szukaj..." style="font-size:1.1rem; padding:12px;">
-
-    <div id="items-list" style="max-height:40vh; overflow-y:auto;">
-        {% for item in items %}
-        <div class="item-touch-row"
-             data-id="{{ item.item_id }}"
-             data-name="{{ item.name }}"
-             onclick="selectItem(this)">
-            <div style="font-size:1.1rem; font-weight:600;">{{ item.name }}</div>
-            <div class="text-muted" style="font-size:0.85rem;">
-                {{ item.unit_of_measure }}
-                {% if item.usage_period_months %}
-                    · {{ item.usage_period_months }} mies.
-                {% else %}
-                    · Do zużycia
-                {% endif %}
-            </div>
-        </div>
-        {% endfor %}
-        {% if not items %}
-        <div class="alert alert-info">Brak przedmiotów w magazynie.</div>
-        {% endif %}
-    </div>
-
-    <div id="selected-item-info" class="alert alert-success mt-3" style="display:none;">
-        Wybrано: <strong id="selected-item-name"></strong>
-    </div>
-</div>
-
-<!-- KROK 2: Skan NFC -->
-<div class="mobile-card" id="step-nfc" style="display:none;">
-    <h5 class="mb-3"><span class="badge bg-danger me-2">2</span> Zidentyfikuj strażaka</h5>
-
-    <div id="nfc-mode-info" class="alert alert-secondary py-2 mb-3" style="font-size:0.9rem;">
-        <span id="nfc-mode-label">
-            <i class="bi bi-hourglass-split"></i> Wykrywanie trybu NFC...
-        </span>
+    <div id="nfc-mode-info" class="mb-3 p-2 rounded" style="background:#1a355c; font-size:0.9rem; color:#adc4e3;">
+        <i class="bi bi-hourglass-split"></i> Wykrywanie trybu NFC...
     </div>
 
     <div class="nfc-pulse" id="nfc-waiting">📡</div>
-    <p class="text-center text-muted">Przyłóż kartę NFC strażaka</p>
+    <p class="text-center" style="color:#adc4e3;">Przyłóż kartę NFC strażaka</p>
 
-    <input id="nfc-input" type="text" style="opacity:0; height:1px; width:1px; position:absolute;">
+    <input id="nfc-input" type="text"
+           autocomplete="off"
+           style="position:fixed; top:-1000px; left:-1000px; width:1px; height:1px;">
 
-    <div id="nfc-found" class="alert alert-success" style="display:none;">
-        <i class="bi bi-check-circle"></i>
-        Strażak: <strong id="nfc-firefighter-name"></strong>
+    <div id="nfc-found" class="p-3 rounded mt-3" style="display:none; background:#0d3320; border:1px solid #1a5c35;">
+        <div style="color:#4caf82; font-size:1.1rem; font-weight:700;">
+            <i class="bi bi-check-circle"></i> Znaleziono strażaka
+        </div>
+        <div style="color:#fff; font-size:1.2rem; font-weight:700; margin-top:6px;" id="nfc-name"></div>
+        <div style="color:#adc4e3; font-size:0.9rem;" id="nfc-role"></div>
     </div>
 
-    <div id="nfc-error" class="alert alert-danger" style="display:none;">
-        <i class="bi bi-x-circle"></i> Karta NFC nieprzypisana do żadnego strażaka.
+    <div id="nfc-error" class="p-3 rounded mt-3" style="display:none; background:#3d1010; border:1px solid #7a1a1a;">
+        <div style="color:#f87171;">
+            <i class="bi bi-x-circle"></i> Karta NFC nieprzypisana do żadnego strażaka.
+        </div>
     </div>
 
-    <div id="nfc-timeout-info" class="alert alert-warning" style="display:none;">
-        <i class="bi bi-clock"></i> Timeout – spróbuj ponownie.
-        <button class="btn btn-sm btn-warning ms-2" onclick="restartNFC()">Ponów</button>
+    <div id="nfc-timeout-info" class="p-3 rounded mt-3" style="display:none; background:#3d2e10; border:1px solid #7a5a1a;">
+        <div style="color:#fbbf24;">
+            <i class="bi bi-clock"></i> Timeout – spróbuj ponownie.
+        </div>
+        <button class="btn btn-warning btn-sm mt-2 w-100" onclick="restartNFC()">
+            <i class="bi bi-arrow-clockwise"></i> Ponów skanowanie
+        </button>
     </div>
 
-    <button type="button"
-            class="btn btn-outline-light btn-touch mt-2"
-            data-bs-toggle="modal" data-bs-target="#manualModal">
-        <i class="bi bi-list"></i> Wybierz strażaka ręcznie
-    </button>
 </div>
 
-<!-- KROK 3: Przycisk potwierdzenia -->
-<form id="confirm-form" method="POST"
-      action="{{ url_for('mobile_controller.mobile_confirm') }}"
-      style="display:none;">
-    <input type="hidden" name="item_id" id="form-item-id">
-    <input type="hidden" name="firefighter_id" id="form-firefighter-id">
-    <input type="hidden" name="nfc_scan" id="form-nfc-scan" value="false">
-
-    <button type="submit" class="btn btn-success btn-touch">
+<div id="go-btn" style="display:none;">
+    <a id="go-link" href="#" class="btn btn-success btn-touch">
         <i class="bi bi-arrow-right-circle" style="font-size:1.6rem;"></i>
-        Przejdź do potwierdzenia
-    </button>
-</form>
+        Zobacz wyposażenie strażaka
+    </a>
+</div>
 
-<!-- MODAL: ręczny wybór strażaka -->
-{% set firefighters = [] %}
+<button type="button"
+        class="btn btn-outline-light btn-touch mt-2"
+        data-bs-toggle="modal" data-bs-target="#manualModal">
+    <i class="bi bi-list"></i> Wybierz strażaka ręcznie
+</button>
+
+<!-- MODAL: ręczny wybór -->
 <div class="modal fade" id="manualModal" tabindex="-1">
     <div class="modal-dialog modal-fullscreen-sm-down">
         <div class="modal-content" style="background:#11284d; color:#fff;">
             <div class="modal-header" style="border-color:#1a355c;">
-                <h5 class="modal-title">Wybierz strażaka</h5>
+                <h5 class="modal-title" style="color:#fff;">Wybierz strażaka</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <input type="text" id="search-ff-modal" class="form-control mb-3"
+                <input type="text" id="search-ff"
+                       class="form-control mb-3"
                        placeholder="Szukaj po nazwisku..."
-                       style="font-size:1.1rem; padding:12px; background:#1a355c; color:#fff; border:none;">
-                <div id="ff-modal-list" style="max-height:60vh; overflow-y:auto;">
+                       style="background:#1a355c; color:#fff; border:1px solid #234a7a;
+                              padding:12px; border-radius:10px; font-size:1rem;">
+                <div id="ff-list" style="max-height:60vh; overflow-y:auto;">
                     {% for ff in firefighters %}
                     <div class="item-touch-row"
-                         data-id="{{ ff.firefighter_id }}"
                          data-name="{{ ff.full_name|lower }}"
-                         onclick="selectFirefighterManual(this)">
-                        <strong>{{ ff.full_name }}</strong>
-                        {% if ff.has_nfc %}
-                            <span class="badge bg-success ms-2">NFC</span>
-                        {% endif %}
+                         onclick="window.location='/Sp/mobile/firefighter/{{ ff.firefighter_id }}'">
+                        <strong style="color:#fff;">{{ ff.full_name }}</strong>
+                        <small style="color:#adc4e3; display:block;">{{ ff.role_label }}</small>
                     </div>
                     {% endfor %}
                 </div>
@@ -119,109 +84,73 @@
         </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/nfc.js') }}"></script>
 <script>
-    let selectedItemId   = null;
-    let selectedFFId     = null;
-    let nfcReader        = null;
+    var nfcReader = null;
 
-    // ── wstępnie zaznacz przedmiot jeśli przekazany z backendu
-    {% if selected_item %}
-    window.addEventListener("DOMContentLoaded", () => {
-        const row = document.querySelector(`.item-touch-row[data-id="{{ selected_item.item_id }}"]`);
-        if (row) selectItem(row);
-    });
-    {% endif %}
-
-    // ── KROK 1: wybór przedmiotu
-    function selectItem(el) {
-        document.querySelectorAll(".item-touch-row").forEach(r => r.classList.remove("selected"));
-        el.classList.add("selected");
-        selectedItemId = el.dataset.id;
-        document.getElementById("selected-item-name").textContent = el.dataset.name;
-        document.getElementById("selected-item-info").style.display = "block";
-        document.getElementById("form-item-id").value = selectedItemId;
-
-        // Pokaż krok NFC
-        document.getElementById("step-nfc").style.display = "block";
-        document.getElementById("step-nfc").scrollIntoView({ behavior: "smooth" });
-
-        startNFC();
-    }
-
-    // ── filtrowanie listy przedmiotów
-    document.getElementById("search-items").addEventListener("input", function() {
-        const q = this.value.toLowerCase();
-        document.querySelectorAll(".item-touch-row").forEach(row => {
-            row.style.display = row.dataset.name.toLowerCase().includes(q) ? "" : "none";
+    // ── Wyszukiwarka strażaków ──
+    document.getElementById("search-ff").addEventListener("input", function() {
+        var q = this.value.toLowerCase().trim();
+        document.querySelectorAll("#ff-list .item-touch-row").forEach(function(row) {
+            var name = (row.getAttribute("data-name") || "").toLowerCase();
+            row.style.display = name.includes(q) ? "" : "none";
         });
     });
 
-    // ── KROK 2: NFC
-    function startNFC() {
-        if (nfcReader) nfcReader.stopListening();
+    document.getElementById("manualModal").addEventListener("shown.bs.modal", function() {
+        document.getElementById("search-ff").value = "";
+        document.getElementById("search-ff").focus();
+        // Pokaż wszystkie wiersze gdy modal się otwiera
+        document.querySelectorAll("#ff-list .item-touch-row").forEach(function(row) {
+            row.style.display = "";
+        });
+    });
 
-        nfcReader = new NFCReader("nfc-input", (data) => {
+    // ── NFC ──
+    function startNFC() {
+        nfcReader = new NFCReader("nfc-input", function(data) {
             fetch("/Sp/mobile/api/firefighter-by-nfc/" + encodeURIComponent(data.hash))
-                .then(res => res.ok ? res.json() : null)
-                .then(json => {
+                .then(function(res) { return res.ok ? res.json() : null; })
+                .then(function(json) {
                     if (json) {
-                        onFirefighterFound(json, true);
+                        document.getElementById("nfc-name").textContent = json.full_name;
+                        document.getElementById("nfc-role").textContent = json.role;
+                        document.getElementById("nfc-found").style.display = "block";
+                        document.getElementById("nfc-error").style.display = "none";
+                        document.getElementById("nfc-timeout-info").style.display = "none";
+                        document.getElementById("nfc-waiting").style.display = "none";
+                        document.getElementById("go-link").href = "/Sp/mobile/firefighter/" + json.id;
+                        document.getElementById("go-btn").style.display = "block";
                     } else {
                         document.getElementById("nfc-error").style.display = "block";
                         document.getElementById("nfc-found").style.display = "none";
-                        document.getElementById("confirm-form").style.display = "none";
                     }
                 })
-                .catch(() => {
+                .catch(function() {
                     document.getElementById("nfc-error").style.display = "block";
                 });
         });
-
         nfcReader.startListening();
         document.getElementById("nfc-timeout-info").style.display = "none";
-        document.getElementById("nfc-error").style.display = "none";
-        document.getElementById("nfc-found").style.display = "none";
     }
 
     function restartNFC() {
         document.getElementById("nfc-timeout-info").style.display = "none";
+        document.getElementById("nfc-found").style.display = "none";
+        document.getElementById("nfc-error").style.display = "none";
+        document.getElementById("nfc-waiting").style.display = "block";
+        document.getElementById("go-btn").style.display = "none";
+        if (nfcReader) nfcReader.stopListening();
         startNFC();
     }
 
-    document.addEventListener("nfc-timeout", () => {
+    document.addEventListener("nfc-timeout", function() {
         document.getElementById("nfc-timeout-info").style.display = "block";
     });
 
-    // ── Znaleziono strażaka
-    function onFirefighterFound(json, viaNFC) {
-        selectedFFId = json.id;
-        document.getElementById("nfc-firefighter-name").textContent = json.full_name;
-        document.getElementById("nfc-found").style.display = "block";
-        document.getElementById("nfc-error").style.display = "none";
-        document.getElementById("nfc-waiting").style.display = "none";
-        document.getElementById("form-firefighter-id").value = json.id;
-        document.getElementById("form-nfc-scan").value = viaNFC ? "true" : "false";
-
-        document.getElementById("confirm-form").style.display = "block";
-        document.getElementById("confirm-form").scrollIntoView({ behavior: "smooth" });
-    }
-
-    // ── Ręczny wybór strażaka (modal)
-    document.getElementById("search-ff-modal").addEventListener("input", function() {
-        const q = this.value.toLowerCase();
-        document.querySelectorAll("#ff-modal-list .item-touch-row").forEach(row => {
-            row.style.display = row.dataset.name.includes(q) ? "" : "none";
-        });
-    });
-
-    function selectFirefighterManual(el) {
-        bootstrap.Modal.getInstance(document.getElementById("manualModal")).hide();
-        onFirefighterFound({ id: el.dataset.id, full_name: el.querySelector("strong").textContent }, false);
-    }
+    startNFC();
 </script>
 {% endblock %}

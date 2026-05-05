@@ -1,185 +1,170 @@
 {% extends "base.html" %}
-
 {% block title %}Powiadomienia{% endblock %}
-
 {% block content %}
 <div class="container">
+    <h2 class="mb-4">Powiadomienia</h2>
 
-    <h2 class="mb-4">Powiadomienia o zbliżających się wymianach</h2>
-
-    <!-- ========================= -->
-    <!-- KARTY STATYSTYK -->
-    <!-- ========================= -->
+    <!-- Liczniki -->
     <div class="row mb-4">
-
-        <div class="col-md-4">
-            <div class="card text-white bg-danger shadow-sm">
+        <div class="col-md-3">
+            <div class="card text-white bg-danger text-center">
                 <div class="card-body">
-                    <h5 class="card-title">🔴 Przeterminowane</h5>
-                    <p class="card-text fs-3">{{ counts.danger }}</p>
+                    <h2>{{ counts.danger }}</h2>
+                    <div>Krytyczne</div>
                 </div>
             </div>
         </div>
-
-        <div class="col-md-4">
-            <div class="card text-dark bg-warning shadow-sm">
+        <div class="col-md-3">
+            <div class="card text-white bg-warning text-center">
                 <div class="card-body">
-                    <h5 class="card-title">🟡 Wymagają uwagi</h5>
-                    <p class="card-text fs-3">{{ counts.warning }}</p>
+                    <h2>{{ counts.warning }}</h2>
+                    <div>Ostrzeżenia</div>
                 </div>
             </div>
         </div>
-
-        <div class="col-md-4">
-            <div class="card text-white bg-info shadow-sm">
+        <div class="col-md-3">
+            <div class="card text-white bg-info text-center">
                 <div class="card-body">
-                    <h5 class="card-title">🔵 Nadchodzące</h5>
-                    <p class="card-text fs-3">{{ counts.info }}</p>
+                    <h2>{{ counts.info }}</h2>
+                    <div>Informacyjne</div>
                 </div>
             </div>
         </div>
-
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h2>{{ counts.total }}</h2>
+                    <div>Łącznie</div>
+                </div>
+            </div>
+        </div>
     </div>
 
-
-    <!-- ========================= -->
-    <!-- BRAK POWIADOMIEŃ -->
-    <!-- ========================= -->
     {% if counts.total == 0 %}
-    <div class="card border-success">
-        <div class="card-body text-success">
-            <h4>Wszystko w porządku ✓</h4>
-            <p>Brak przedmiotów wymagających wymiany w najbliższym czasie.</p>
-        </div>
+    <div class="alert alert-success">
+        <i class="bi bi-check-circle"></i> Wszystko w porządku – brak powiadomień.
     </div>
     {% endif %}
 
-
-    <!-- ========================= -->
-    <!-- SEKCJA: PRZETERMINOWANE -->
-    <!-- ========================= -->
-    {% if grouped.danger %}
-    <div class="alert alert-danger mt-4">
-        <h4 class="alert-heading">🔴 Przeterminowane</h4>
-        <p>Przedmioty, które powinny zostać wymienione natychmiast.</p>
-
-        <div class="table-responsive">
-            <table class="table table-sm table-bordered align-middle">
-                <thead class="table-dark">
+    <!-- Brak wyposażenia -->
+    {% set missing = notifications | selectattr("type", "equalto", "missing_equipment") | list %}
+    {% if missing %}
+    <div class="card mb-4 border-danger">
+        <div class="card-header bg-danger text-white">
+            <i class="bi bi-exclamation-triangle"></i> Brak wymaganego wyposażenia ({{ missing|length }})
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
                     <tr>
-                        <th>Przedmiot</th>
                         <th>Strażak</th>
-                        <th>Data wydania</th>
-                        <th>Data wymiany</th>
-                        <th>Pozostało dni</th>
+                        <th>Rola</th>
+                        <th>Brakujący przedmiot</th>
                         <th>Akcja</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for n in grouped.danger %}
+                    {% for n in missing %}
                     <tr>
-                        <td>{{ n.item_name }}</td>
-                        <td>{{ n.firefighter_name or "-" }}</td>
-                        <td>{{ n.issue_date }}</td>
-                        <td>{{ n.expiry_date }}</td>
-                        <td class="text-danger fw-bold">{{ n.days_remaining }}</td>
                         <td>
-                            <form method="POST" action="{{ url_for('item_controller.consume_item', id=n.item_id) }}">
-                                <button class="btn btn-sm btn-danger">Zużyj</button>
-                            </form>
+                            <a href="{{ url_for('firefighter_controller.firefighter_detail', id=n.firefighter_id) }}">
+                                {{ n.firefighter_name }}
+                            </a>
+                        </td>
+                        <td><span class="badge bg-secondary">{{ n.role_label }}</span></td>
+                        <td>{{ n.item_name }}</td>
+                        <td>
+                            <a href="{{ url_for('item_controller.items_stock') }}"
+                               class="btn btn-sm btn-success">
+                                <i class="bi bi-box-arrow-right"></i> Wydaj
+                            </a>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-
     </div>
     {% endif %}
 
-
-    <!-- ========================= -->
-    <!-- SEKCJA: WARNING -->
-    <!-- ========================= -->
-    {% if grouped.warning %}
-    <div class="alert alert-warning mt-4">
-        <h4 class="alert-heading">🟡 Wymagają uwagi wkrótce</h4>
-        <p>Przedmioty, które należy wymienić w ciągu 1–14 dni.</p>
-
-        <div class="table-responsive">
-            <table class="table table-sm table-bordered align-middle">
-                <thead class="table-dark">
+    <!-- Brak NFC -->
+    {% set no_nfc = notifications | selectattr("type", "equalto", "no_nfc") | list %}
+    {% if no_nfc %}
+    <div class="card mb-4 border-warning">
+        <div class="card-header bg-warning text-dark">
+            <i class="bi bi-wifi-off"></i> Brak karty NFC ({{ no_nfc|length }})
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
                     <tr>
-                        <th>Przedmiot</th>
                         <th>Strażak</th>
-                        <th>Data wydania</th>
-                        <th>Data wymiany</th>
-                        <th>Pozostało dni</th>
+                        <th>Rola</th>
                         <th>Akcja</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for n in grouped.warning %}
+                    {% for n in no_nfc %}
                     <tr>
-                        <td>{{ n.item_name }}</td>
-                        <td>{{ n.firefighter_name or "-" }}</td>
-                        <td>{{ n.issue_date }}</td>
-                        <td>{{ n.expiry_date }}</td>
-                        <td class="fw-bold">{{ n.days_remaining }}</td>
                         <td>
-                            <form method="POST" action="{{ url_for('item_controller.consume_item', id=n.item_id) }}">
-                                <button class="btn btn-sm btn-warning">Zużyj</button>
-                            </form>
+                            <a href="{{ url_for('firefighter_controller.firefighter_detail', id=n.firefighter_id) }}">
+                                {{ n.firefighter_name }}
+                            </a>
+                        </td>
+                        <td><span class="badge bg-secondary">{{ n.role_label }}</span></td>
+                        <td>
+                            <a href="{{ url_for('firefighter_controller.edit_firefighter_form', id=n.firefighter_id) }}"
+                               class="btn btn-sm btn-warning">
+                                <i class="bi bi-nfc"></i> Przypisz NFC
+                            </a>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-
     </div>
     {% endif %}
 
-
-    <!-- ========================= -->
-    <!-- SEKCJA: INFO -->
-    <!-- ========================= -->
-    {% if grouped.info %}
-    <div class="alert alert-info mt-4">
-        <h4 class="alert-heading">🔵 Nadchodzące</h4>
-        <p>Przedmioty, które będą wymagały wymiany w ciągu 15–60 dni.</p>
-
-        <div class="table-responsive">
-            <table class="table table-sm table-bordered align-middle">
-                <thead class="table-dark">
+    <!-- Wymiany -->
+    {% set expiry = notifications | selectattr("type", "equalto", "expiry") | list %}
+    {% if expiry %}
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white">
+            <i class="bi bi-clock"></i> Zbliżające się wymiany ({{ expiry|length }})
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
                     <tr>
                         <th>Przedmiot</th>
                         <th>Strażak</th>
                         <th>Data wydania</th>
-                        <th>Data wymiany</th>
+                        <th>Wygasa</th>
                         <th>Pozostało dni</th>
-                        <th>Akcja</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for n in grouped.info %}
+                    {% for n in expiry %}
                     <tr>
                         <td>{{ n.item_name }}</td>
-                        <td>{{ n.firefighter_name or "-" }}</td>
+                        <td>{{ n.firefighter_name }}</td>
                         <td>{{ n.issue_date }}</td>
                         <td>{{ n.expiry_date }}</td>
-                        <td>{{ n.days_remaining }}</td>
                         <td>
-                            <form method="POST" action="{{ url_for('item_controller.consume_item', id=n.item_id) }}">
-                                <button class="btn btn-sm btn-outline-primary">Zużyj</button>
-                            </form>
+                            {% if n.days_remaining <= 0 %}
+                                <span class="badge bg-danger">Przeterminowany</span>
+                            {% elif n.days_remaining <= 14 %}
+                                <span class="badge bg-warning text-dark">{{ n.days_remaining }} dni</span>
+                            {% else %}
+                                <span class="badge bg-info">{{ n.days_remaining }} dni</span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-
     </div>
     {% endif %}
 

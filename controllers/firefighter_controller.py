@@ -1,15 +1,13 @@
-from flask import Blueprint, render_template, session, redirect, url_for, request, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from functools import wraps
 
-from services.user_service import UserService
 from services.firefighter_service import FirefighterService
+from services.user_service import UserService
+from models.firefighter_model import Firefighter
+from models.item_model import RoleRequiredItem, Item
 
 firefighter_bp = Blueprint("firefighter_controller", __name__, url_prefix="/Sp")
 
-
-# ---------------------------------------------------------
-# Dekorator role_required
-# ---------------------------------------------------------
 
 def role_required(required_roles=None):
     def decorator(f):
@@ -18,22 +16,15 @@ def role_required(required_roles=None):
             cas_username = session.get("CAS_USERNAME")
             if not cas_username:
                 return redirect(url_for("user_controller.unauthorize"))
-
             user = UserService.get_user_by_cas_username(cas_username)
             if not user or not user.is_active:
                 return redirect(url_for("user_controller.unauthorize"))
-
             if required_roles and user.role not in required_roles:
                 return redirect(url_for("user_controller.unauthorize"))
-
             return f(*args, **kwargs)
         return wrapper
     return decorator
 
-
-# ---------------------------------------------------------
-# LISTA STRAŻAKÓW
-# ---------------------------------------------------------
 
 @firefighter_bp.route("/firefighters")
 @role_required()
@@ -42,12 +33,8 @@ def firefighters_list():
     return render_template("firefighters/list.html", firefighters=firefighters)
 
 
-# ---------------------------------------------------------
-# DODAWANIE STRAŻAKA
-# ---------------------------------------------------------
-
 @firefighter_bp.route("/firefighters/add", methods=["GET"])
-@role_required()
+@role_required(["manager", "admin"])
 def add_firefighter_form():
     return render_template("firefighters/add.html")
 
@@ -59,46 +46,23 @@ def add_firefighter_post():
     last_name    = request.form.get("last_name")
     nfc_username = request.form.get("nfc_username")
     nfc_hash     = request.form.get("nfc_hash")
-
-    # Sprawdź duplikat NFC przed dodaniem
-    if nfc_hash:
-        existing = FirefighterService.get_by_nfc_hash(nfc_hash)
-        if existing:
-            flash(f"Ta karta NFC jest już przypisana do strażaka: {existing.full_name}.", "danger")
-            return redirect(url_for("firefighter_controller.add_firefighter_form"))
-
-    def to_int(val):
-        try: return int(val) if val else None
-        except: return None
-
-    def to_float(val):
-        try: return float(val) if val else None
-        except: return None
+    role         = request.form.get("role", "strazak")
 
     firefighter = FirefighterService.create(
         first_name=first_name,
         last_name=last_name,
-        nfc_username=nfc_username or None,
-        nfc_hash=nfc_hash or None,
-        height_cm=to_int(request.form.get("height_cm")),
-        chest_cm=to_int(request.form.get("chest_cm")),
-        waist_cm=to_int(request.form.get("waist_cm")),
-        hat_size=to_float(request.form.get("hat_size")),
-        shirt_size=request.form.get("shirt_size") or None,
-        shoe_size=to_float(request.form.get("shoe_size")),
+        nfc_username=nfc_username,
+        nfc_hash=nfc_hash,
+        role=role
     )
 
     if firefighter:
-        flash("Strażak został dodany.", "success")
+        flash("Dodano strażaka.", "success")
     else:
-        flash("Błąd podczas dodawania strażaka.", "danger")
+        flash("Błąd podczas dodawania.", "danger")
 
     return redirect(url_for("firefighter_controller.firefighters_list"))
 
-
-# ---------------------------------------------------------
-# SZCZEGÓŁY STRAŻAKA
-# ---------------------------------------------------------
 
 @firefighter_bp.route("/firefighters/<int:id>")
 @role_required()
@@ -109,19 +73,48 @@ def firefighter_detail(id):
         return redirect(url_for("firefighter_controller.firefighters_list"))
 
     issued_items = FirefighterService.get_issued_items(id)
+
+    # Wyposażenie obowiązkowe
+    required_items = RoleRequiredItem.query.filter_by(
+        role=firefighter.role,
+        is_required=True
+    ).all()
+
+    # Mapa catalog_id -> item_id dla wydanych przedmiotów
+    issued_by_catalog = {}
+    for item in issued_items:
+        if item.catalog_id and item.catalog_id not in issued_by_catalog:
+            issued_by_catalog[item.catalog_id] = item.item_id
+
+    equipment_status = []
+    required_catalog_ids = set()
+    for req in required_items:
+        required_catalog_ids.add(req.catalog_id)
+        equipment_status.append({
+            "name":       req.catalog_item.name,
+            "quantity":   req.quantity,
+            "catalog_id": req.catalog_id,
+            "has_it":     req.catalog_id in issued_by_catalog,
+            "item_id":    issued_by_catalog.get(req.catalog_id),
+        })
+
+    # Przedmioty spoza wyposażenia obowiązkowego
+    extra_items = [
+        item for item in issued_items
+        if item.catalog_id not in required_catalog_ids
+    ]
+
     return render_template(
         "firefighters/detail.html",
         firefighter=firefighter,
-        issued_items=issued_items
+        issued_items=issued_items,
+        equipment_status=equipment_status,
+        extra_items=extra_items,
     )
 
 
-# ---------------------------------------------------------
-# EDYCJA STRAŻAKA
-# ---------------------------------------------------------
-
 @firefighter_bp.route("/firefighters/<int:id>/edit", methods=["GET"])
-@role_required()
+@role_required(["manager", "admin"])
 def edit_firefighter_form(id):
     firefighter = FirefighterService.get_by_id(id)
     if not firefighter:
@@ -137,46 +130,18 @@ def edit_firefighter_post(id):
     last_name    = request.form.get("last_name")
     nfc_username = request.form.get("nfc_username")
     nfc_hash     = request.form.get("nfc_hash")
+    role         = request.form.get("role", "strazak")
 
-    def to_int(val):
-        try: return int(val) if val else None
-        except: return None
-
-    def to_float(val):
-        try: return float(val) if val else None
-        except: return None
-
-    # Obsługa NFC – sprawdź duplikat
-    if nfc_hash:
-        existing = FirefighterService.get_by_nfc_hash(nfc_hash)
-        if existing and existing.firefighter_id != id:
-            # Duplikat – zwróć JSON jeśli request AJAX, flash jeśli zwykły
-            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                return jsonify({
-                    "error": "duplicate",
-                    "message": f"Ta karta NFC jest już przypisana do strażaka: {existing.full_name}."
-                }), 409
-            flash(f"Ta karta NFC jest już przypisana do strażaka: {existing.full_name}.", "danger")
-            return redirect(url_for("firefighter_controller.edit_firefighter_form", id=id))
-
-        result = FirefighterService.attach_nfc(id, nfc_username, nfc_hash)
-        if result is None:
-            flash("Błąd podczas przypisywania karty NFC.", "danger")
-            return redirect(url_for("firefighter_controller.edit_firefighter_form", id=id))
-
-    firefighter = FirefighterService.update(
+    updated = FirefighterService.update(
         id,
         first_name=first_name,
         last_name=last_name,
-        height_cm=to_int(request.form.get("height_cm")),
-        chest_cm=to_int(request.form.get("chest_cm")),
-        waist_cm=to_int(request.form.get("waist_cm")),
-        hat_size=to_float(request.form.get("hat_size")),
-        shirt_size=request.form.get("shirt_size") or None,
-        shoe_size=to_float(request.form.get("shoe_size")),
+        nfc_username=nfc_username,
+        nfc_hash=nfc_hash,
+        role=role
     )
 
-    if firefighter:
+    if updated:
         flash("Zapisano zmiany.", "success")
     else:
         flash("Błąd podczas zapisu.", "danger")
@@ -184,24 +149,16 @@ def edit_firefighter_post(id):
     return redirect(url_for("firefighter_controller.firefighter_detail", id=id))
 
 
-# ---------------------------------------------------------
-# DEAKTYWACJA STRAŻAKA
-# ---------------------------------------------------------
-
 @firefighter_bp.route("/firefighters/<int:id>/deactivate", methods=["POST"])
-@role_required(["manager", "admin"])
+@role_required(["admin"])
 def deactivate_firefighter(id):
-    ok = FirefighterService.deactivate(id)
-    if ok:
+    result = FirefighterService.deactivate(id)
+    if result:
         flash("Strażak został dezaktywowany.", "success")
     else:
-        flash("Błąd podczas dezaktywacji.", "danger")
+        flash("Nie udało się dezaktywować strażaka.", "danger")
     return redirect(url_for("firefighter_controller.firefighters_list"))
 
-
-# ---------------------------------------------------------
-# USUWANIE STRAŻAKA
-# ---------------------------------------------------------
 
 @firefighter_bp.route("/firefighters/<int:id>/delete", methods=["POST"])
 @role_required(["admin"])
@@ -214,17 +171,14 @@ def delete_firefighter(id):
     return redirect(url_for("firefighter_controller.firefighters_list"))
 
 
-# ---------------------------------------------------------
-# API: WYSZUKIWANIE STRAŻAKA PO NFC
-# ---------------------------------------------------------
-
 @firefighter_bp.route("/api/firefighters/by-nfc/<nfc_hash>")
 @role_required()
 def api_firefighter_by_nfc(nfc_hash):
+    from flask import jsonify
     firefighter = FirefighterService.get_by_nfc_hash(nfc_hash)
     if not firefighter:
         return jsonify({"error": "Nie znaleziono"}), 404
     return jsonify({
-        "id": firefighter.firefighter_id,
+        "id":        firefighter.firefighter_id,
         "full_name": firefighter.full_name
     })

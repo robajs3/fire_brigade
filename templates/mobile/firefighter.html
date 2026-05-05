@@ -1,0 +1,140 @@
+{% extends "mobile/base_mobile.html" %}
+{% block title %}{{ firefighter.full_name }}{% endblock %}
+
+{% block content %}
+
+<!-- Karta strażaka -->
+<div class="mobile-card" style="background:#1a355c; border-left: 4px solid #8b0000;">
+    <h4 class="mb-1" style="color:#fff; font-weight:700;">{{ firefighter.full_name }}</h4>
+    <div style="color:#adc4e3; font-size:0.9rem;">{{ firefighter.role_label }}</div>
+    {% if missing_count > 0 %}
+        <div class="mt-2">
+            <span class="badge bg-danger" style="font-size:0.95rem; padding:6px 12px;">
+                <i class="bi bi-exclamation-triangle"></i> Brakuje: {{ missing_count }} przedmiotów
+            </span>
+        </div>
+    {% else %}
+        <div class="mt-2">
+            <span class="badge bg-success" style="font-size:0.95rem; padding:6px 12px;">
+                <i class="bi bi-check-circle"></i> Wyposażenie kompletne
+            </span>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Wyposażenie obowiązkowe -->
+<div class="mobile-card" style="background:#11284d;">
+    <h5 class="mb-3" style="color:#fff; border-bottom:1px solid #1a355c; padding-bottom:10px;">
+        <i class="bi bi-list-check"></i> Wyposażenie obowiązkowe
+    </h5>
+
+    {% if not equipment_status %}
+        <p style="color:#adc4e3;">Brak zdefiniowanego wyposażenia dla tej roli.</p>
+    {% else %}
+        {% for eq in equipment_status %}
+        <div class="d-flex justify-content-between align-items-center p-3 mb-2 rounded"
+             style="background:{% if eq.has_it %}#0d3320{% else %}#3d1010{% endif %};
+                    border: 1px solid {% if eq.has_it %}#1a5c35{% else %}#7a1a1a{% endif %};">
+            <div>
+                <div style="font-weight:600; color:#fff;">{{ eq.name }}</div>
+                <small style="color:#adc4e3;">Ilość: {{ eq.quantity }}</small>
+            </div>
+            <div>
+                {% if eq.has_it %}
+                    <span class="badge bg-success" style="font-size:0.9rem; padding:6px 10px;">
+                        <i class="bi bi-check"></i> Ma
+                    </span>
+                {% else %}
+                    <button class="btn btn-danger btn-sm"
+                            style="font-size:0.95rem; padding:8px 14px;"
+                            onclick="openIssue({{ eq.catalog_id }}, '{{ eq.name }}')">
+                        <i class="bi bi-plus"></i> Wydaj
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<!-- Pozostałe wydane przedmioty -->
+{% set required_catalog_ids = equipment_status | map(attribute='catalog_id') | list %}
+{% set extra_items = issued_items | rejectattr('catalog_id', 'in', required_catalog_ids) | list %}
+{% if extra_items %}
+<div class="mobile-card" style="background:#11284d;">
+    <h5 class="mb-3" style="color:#fff; border-bottom:1px solid #1a355c; padding-bottom:10px;">
+        <i class="bi bi-box-seam"></i> Pozostałe wydane przedmioty
+    </h5>
+    {% for item in extra_items %}
+    <div class="d-flex justify-content-between align-items-center p-3 mb-2 rounded"
+         style="background:#1a355c; border:1px solid #234a7a;">
+        <div>
+            <div style="font-weight:600; color:#fff;">{{ item.name }}</div>
+            <small style="color:#adc4e3;">
+                Wydano: {{ item.issue_date.strftime('%d.%m.%Y') if item.issue_date else '—' }}
+            </small>
+        </div>
+        <span class="badge bg-info" style="font-size:0.85rem;">Wydany</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Wydaj dowolny przedmiot -->
+<div class="mobile-card" style="background:#11284d;">
+    <h5 class="mb-3" style="color:#fff; border-bottom:1px solid #1a355c; padding-bottom:10px;">
+        <i class="bi bi-plus-circle"></i> Wydaj inny przedmiot
+    </h5>
+    <input type="text" id="search-catalog"
+           class="form-control mb-3"
+           placeholder="Szukaj w katalogu..."
+           style="background:#1a355c; color:#fff; border:1px solid #234a7a;
+                  padding:12px; border-radius:10px; font-size:1rem;">
+    <div style="max-height:300px; overflow-y:auto;">
+        {% for entry in catalog %}
+        <div class="item-touch-row"
+             data-name="{{ entry.name|lower }}"
+             onclick="openIssue({{ entry.catalog_id }}, '{{ entry.name }}')">
+            <strong style="color:#fff;">{{ entry.name }}</strong>
+            <small style="color:#adc4e3; display:block;">{{ entry.unit_of_measure }}</small>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- FORM WYDANIA -->
+<form id="issue-form" method="POST"
+      action="{{ url_for('mobile_controller.mobile_confirm') }}"
+      style="display:none;">
+    <input type="hidden" name="firefighter_id" value="{{ firefighter.firefighter_id }}">
+    <input type="hidden" name="catalog_id" id="form-catalog-id">
+    <input type="hidden" name="nfc_scan" value="{{ 'true' if nfc_scan else 'false' }}">
+</form>
+
+<a href="{{ url_for('mobile_controller.mobile_scan') }}"
+   class="btn btn-outline-light btn-touch mt-2">
+    <i class="bi bi-arrow-left"></i> Powrót do skanowania
+</a>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    var catalogRows = document.querySelectorAll(".item-touch-row");
+
+    document.getElementById("search-catalog").addEventListener("input", function() {
+        var q = this.value.toLowerCase();
+        for (var i = 0; i < catalogRows.length; i++) {
+            catalogRows[i].style.display =
+                catalogRows[i].getAttribute("data-name").includes(q) ? "" : "none";
+        }
+    });
+
+    function openIssue(catalogId, name) {
+        if (confirm("Wydać przedmiot:\n" + name + "\ndla: {{ firefighter.full_name }}?")) {
+            document.getElementById("form-catalog-id").value = catalogId;
+            document.getElementById("issue-form").submit();
+        }
+    }
+</script>
+{% endblock %}
