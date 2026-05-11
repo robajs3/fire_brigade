@@ -1,4 +1,3 @@
-# controllers/user_controller.py
 from flask import Blueprint, render_template, session, redirect, url_for, request, flash, current_app
 from functools import wraps
 
@@ -7,10 +6,6 @@ from services.user_service import UserService
 
 user_bp = Blueprint("user_controller", __name__, url_prefix="/Sp")
 
-
-# ---------------------------------------------------------
-# Dekorator role_required
-# ---------------------------------------------------------
 
 def role_required(required_roles=None):
     def decorator(f):
@@ -91,7 +86,7 @@ def profile():
 @login_required
 @role_required(["admin"])
 def users_list():
-    users = UserService.get_all_active_users()
+    users = UserService.get_all_users()  # ← wszyscy, nie tylko aktywni
     return render_template("users/list.html", users=users)
 
 
@@ -168,25 +163,48 @@ def toggle_user(id):
         flash("Nie znaleziono użytkownika.", "danger")
         return redirect(url_for("user_controller.users_list"))
 
-    updated = UserService.update_user(id, is_active=not user.is_active)
+    # Zabezpieczenie – nie można wyłączyć samego siebie
+    if user.cas_username == session.get("CAS_USERNAME"):
+        flash("Nie możesz wyłączyć własnego konta.", "warning")
+        return redirect(url_for("user_controller.users_list"))
+
+    new_state = not user.is_active
+    updated = UserService.update_user(id, is_active=new_state)
     if updated:
-        flash("Zmieniono status użytkownika.", "success")
+        status = "włączony" if new_state else "wyłączony"
+        flash(f"Użytkownik {user.cas_username} został {status}.", "success")
     else:
         flash("Błąd podczas zmiany statusu.", "danger")
 
     return redirect(url_for("user_controller.users_list"))
 
 
+# ---------------------------------------------------------
+# USUWANIE UŻYTKOWNIKA (ADMIN)
+# ---------------------------------------------------------
+
 @user_bp.route("/users/<int:id>/delete", methods=["POST"])
 @login_required
 @role_required(["admin"])
 def delete_user(id):
+    user = UserService.get_user_by_id(id)
+    if not user:
+        flash("Nie znaleziono użytkownika.", "danger")
+        return redirect(url_for("user_controller.users_list"))
+
+    # Zabezpieczenie – nie można usunąć samego siebie
+    if user.cas_username == session.get("CAS_USERNAME"):
+        flash("Nie możesz usunąć własnego konta.", "warning")
+        return redirect(url_for("user_controller.users_list"))
+
     result = UserService.delete_user(id)
     if result:
         flash("Użytkownik został usunięty.", "success")
     else:
         flash("Błąd podczas usuwania użytkownika.", "danger")
+
     return redirect(url_for("user_controller.users_list"))
+
 
 # ---------------------------------------------------------
 # DEV LOGIN (tylko debug=True)
@@ -198,6 +216,10 @@ def dev_login():
         return redirect(url_for("user_controller.unauthorize"))
 
     session["CAS_USERNAME"] = "dev_admin"
-    UserService.ensure_user_exists("dev_admin", "Dev Administrator")
+    user = UserService.ensure_user_exists("dev_admin", "Dev Administrator")
+    # Dev admin zawsze ma rolę admin
+    if user and user.role != "admin":
+        UserService.update_user(user.user_id, role="admin")
+
     flash("Zalogowano jako dev_admin (tryb developerski).", "info")
     return redirect(url_for("dashboard_controller.dashboard"))

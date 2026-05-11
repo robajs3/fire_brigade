@@ -31,7 +31,6 @@ def logs_list():
     action_filter      = request.args.get("action", "all")
     nfc_filter         = request.args.get("nfc", "all")
     firefighter_filter = request.args.get("firefighter_id", "")
-    limit              = int(request.args.get("limit", 100))
 
     query = (
         db.session.query(IssuanceLog, Item, User)
@@ -48,23 +47,16 @@ def logs_list():
         query = query.filter(IssuanceLog.nfc_scan == False)
 
     if firefighter_filter:
-        # Filtruj po strażaku – szukaj w logach gdzie firefighter_id pasuje
-        # lub w poprzednim logu issued dla tego przedmiotu
         query = query.filter(IssuanceLog.firefighter_id == int(firefighter_filter))
 
-    raw_logs = query.order_by(IssuanceLog.performed_at.desc()).limit(limit).all()
+    raw_logs = query.order_by(IssuanceLog.performed_at.desc()).all()
 
-    # Dla każdego logu znajdź strażaka
-    # Jeśli log ma firefighter_id → użyj go
-    # Jeśli nie → znajdź z ostatniego logu 'issued' dla tego przedmiotu
     logs = []
     for log, item, performed_by_user in raw_logs:
         firefighter = None
-
         if log.firefighter_id:
             firefighter = Firefighter.query.get(log.firefighter_id)
         else:
-            # Szukaj w poprzednim logu 'issued' dla tego przedmiotu
             issued_log = (
                 IssuanceLog.query
                 .filter_by(item_id=log.item_id, action="issued")
@@ -87,5 +79,4 @@ def logs_list():
         action_filter=action_filter,
         nfc_filter=nfc_filter,
         firefighter_filter=firefighter_filter,
-        limit=limit,
     )

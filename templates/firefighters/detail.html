@@ -4,14 +4,19 @@
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Profil strażaka</h2>
-        <div>
+        <div class="d-flex gap-2">
+            {% if user and user.role in ['admin', 'manager'] %}
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#issueModal">
+                <i class="bi bi-plus-circle"></i> Wydaj przedmiot
+            </button>
+            {% endif %}
             <a href="{{ url_for('firefighter_controller.edit_firefighter_form', id=firefighter.firefighter_id) }}"
-               class="btn btn-primary me-2">
-                <i class="bi bi-pencil-square"></i> Edytuj strażaka
+               class="btn btn-primary">
+                <i class="bi bi-pencil-square"></i> Edytuj
             </a>
             {% if not firefighter.nfc_hash %}
             <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#nfcModal">
-                <i class="bi bi-upc-scan"></i> Przypisz kartę NFC
+                <i class="bi bi-upc-scan"></i> Przypisz NFC
             </button>
             {% endif %}
         </div>
@@ -20,18 +25,22 @@
     <div class="row">
         <!-- LEWA KOLUMNA -->
         <div class="col-md-5">
-
             <div class="card mb-4">
                 <div class="card-header bg-primary text-white">Dane osobowe</div>
                 <div class="card-body">
                     <p><strong>Imię:</strong> {{ firefighter.first_name }}</p>
                     <p><strong>Nazwisko:</strong> {{ firefighter.last_name }}</p>
+                    <p><strong>Rola:</strong> {{ firefighter.role_label }}</p>
                     <p>
                         <strong>Karta NFC:</strong>
                         {% if firefighter.nfc_hash %}
-                            <span class="text-success fw-bold"><i class="bi bi-check-circle"></i> ✓</span>
+                            <span class="text-success fw-bold">
+                                <i class="bi bi-check-circle"></i> Przypisana
+                            </span>
                         {% else %}
-                            <span class="text-secondary fw-bold"><i class="bi bi-x-circle"></i> ✗</span>
+                            <span class="text-secondary fw-bold">
+                                <i class="bi bi-x-circle"></i> Brak
+                            </span>
                         {% endif %}
                     </p>
                 </div>
@@ -55,7 +64,6 @@
                     </table>
                 </div>
             </div>
-
         </div>
 
         <!-- PRAWA KOLUMNA -->
@@ -82,9 +90,9 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Przedmiot</th>
-                                <th style="width:80px;">Ilość</th>
-                                <th style="width:100px;">Status</th>
-                                <th>Akcje</th>
+                                <th style="width:70px;">Ilość</th>
+                                <th style="width:90px;">Status</th>
+                                <th style="width:160px;">Akcje</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -94,13 +102,19 @@
                                 <td>{{ eq.quantity }}</td>
                                 <td>
                                     {% if eq.has_it %}
-                                        <span class="badge bg-success"><i class="bi bi-check"></i> Ma</span>
+                                        <span class="badge bg-success">Ma ✓</span>
                                     {% else %}
-                                        <span class="badge bg-danger"><i class="bi bi-x"></i> Brak</span>
+                                        <span class="badge bg-danger">Brak</span>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if eq.has_it and eq.item_id %}
+                                    {% if not eq.has_it and user and user.role in ['admin', 'manager'] %}
+                                    <button class="btn btn-sm btn-success"
+                                            onclick="openIssueModal({{ eq.catalog_id }}, '{{ eq.name }}')">
+                                        <i class="bi bi-plus"></i> Wydaj bez NFC
+                                    </button>
+                                    {% endif %}
+                                    {% if eq.has_it and eq.item_id and user and user.role in ['admin', 'manager'] %}
                                     <form method="POST"
                                           action="{{ url_for('item_controller.consume_item', id=eq.item_id) }}"
                                           style="display:inline"
@@ -132,8 +146,7 @@
                                 <th>Nazwa</th>
                                 <th>Data wydania</th>
                                 <th>Wygasa</th>
-                                <th>Nr karty odzież.</th>
-                                <th>Uwagi</th>
+                                <th>Nr karty</th>
                                 <th>Akcje</th>
                             </tr>
                         </thead>
@@ -156,8 +169,8 @@
                                     {% endif %}
                                 </td>
                                 <td>{{ item.clothing_card_number or '—' }}</td>
-                                <td>{{ item.notes or '—' }}</td>
                                 <td>
+                                    {% if user and user.role in ['admin', 'manager'] %}
                                     <form method="POST"
                                           action="{{ url_for('item_controller.consume_item', id=item.item_id) }}"
                                           style="display:inline"
@@ -166,6 +179,7 @@
                                             <i class="bi bi-trash"></i> Zużyj
                                         </button>
                                     </form>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -175,6 +189,64 @@
             </div>
             {% endif %}
 
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: WYDANIE PRZEDMIOTU -->
+<div class="modal fade" id="issueModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-box-arrow-right"></i>
+                    Wydaj przedmiot – {{ firefighter.full_name }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST"
+                  action="{{ url_for('firefighter_controller.issue_from_detail', id=firefighter.firefighter_id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Szukaj przedmiotu</label>
+                        <input type="text" id="catalog-search" class="form-control mb-2"
+                               placeholder="Wpisz nazwę...">
+                        <select name="catalog_id" id="catalog-select" class="form-select" required>
+                            <option value="">— wybierz przedmiot —</option>
+                            {% for entry in catalog %}
+                            <option value="{{ entry.catalog_id }}"
+                                    data-name="{{ entry.name|lower }}">
+                                {{ entry.name }} ({{ entry.unit_of_measure }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Data wydania</label>
+                        <input type="date" name="issue_date" class="form-control"
+                               value="{{ today }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nr karty odzieżowej
+                            <span class="text-muted">(opcjonalne)</span>
+                        </label>
+                        <input type="text" name="clothing_card_number" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Uwagi
+                            <span class="text-muted">(opcjonalne)</span>
+                        </label>
+                        <textarea name="notes" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary"
+                            data-bs-dismiss="modal">Anuluj</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle"></i> Wydaj
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -203,44 +275,79 @@
                       style="display:none;">
                     <input type="hidden" name="first_name" value="{{ firefighter.first_name }}">
                     <input type="hidden" name="last_name" value="{{ firefighter.last_name }}">
+                    <input type="hidden" name="role" value="{{ firefighter.role }}">
                     <input type="hidden" name="nfc_username" id="nfc_username">
                     <input type="hidden" name="nfc_hash" id="nfc_hash">
-                    <button type="submit" class="btn btn-success mt-3">Zapisz kartę NFC</button>
+                    <button type="submit" class="btn btn-success mt-3">
+                        <i class="bi bi-save"></i> Zapisz kartę NFC
+                    </button>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/nfc.js') }}"></script>
 <script>
-    const successBox  = document.getElementById("nfc-success");
-    const successText = document.getElementById("nfc-success-text");
-    const timeoutBox  = document.getElementById("nfc-timeout");
-    const formNFC     = document.getElementById("nfc-form");
-    let reader = null;
+    // ── Wyszukiwarka w select katalogu ──
+    document.getElementById("catalog-search").addEventListener("input", function() {
+        const q = this.value.toLowerCase();
+        const select = document.getElementById("catalog-select");
+        Array.from(select.options).forEach(opt => {
+            if (!opt.value) return;
+            const name = (opt.dataset.name || "").toLowerCase();
+            opt.style.display = name.includes(q) ? "" : "none";
+        });
+        // Jeśli aktualnie wybrany jest ukryty, resetuj
+        const selected = select.options[select.selectedIndex];
+        if (selected && selected.style.display === "none") {
+            select.value = "";
+        }
+    });
+
+    function openIssueModal(catalogId, name) {
+        const select = document.getElementById("catalog-select");
+        const search = document.getElementById("catalog-search");
+        // Reset filtra
+        search.value = "";
+        Array.from(select.options).forEach(opt => opt.style.display = "");
+        // Ustaw wybrany przedmiot
+        if (catalogId) {
+            select.value = catalogId;
+            search.value = name;
+        } else {
+            select.value = "";
+        }
+        new bootstrap.Modal(document.getElementById("issueModal")).show();
+    }
+
+    // ── NFC ──
+    let nfcReader = null;
 
     document.getElementById("nfcModal").addEventListener("shown.bs.modal", () => {
-        successBox.style.display = "none";
-        timeoutBox.style.display = "none";
-        reader = new NFCReader("nfc-input", (data) => {
+        document.getElementById("nfc-success").style.display = "none";
+        document.getElementById("nfc-timeout").style.display = "none";
+        document.getElementById("nfc-form").style.display = "none";
+        nfcReader = new NFCReader("nfc-input", (data) => {
             document.getElementById("nfc_username").value = data.userName;
             document.getElementById("nfc_hash").value = data.hash;
-            successText.textContent = "Karta przypisana: " + data.userName;
-            successBox.style.display = "block";
-            formNFC.style.display = "block";
+            document.getElementById("nfc-success-text").textContent =
+                "Karta przypisana: " + data.userName;
+            document.getElementById("nfc-success").style.display = "block";
+            document.getElementById("nfc-form").style.display = "block";
         });
-        reader.startListening();
+        nfcReader.startListening();
     });
 
     document.getElementById("nfcModal").addEventListener("hidden.bs.modal", () => {
-        if (reader) reader.stopListening();
+        if (nfcReader) nfcReader.stopListening();
     });
 
     document.addEventListener("nfc-timeout", () => {
-        timeoutBox.style.display = "block";
+        document.getElementById("nfc-timeout").style.display = "block";
     });
 </script>
 {% endblock %}

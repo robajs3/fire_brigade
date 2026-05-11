@@ -1,13 +1,85 @@
 {% extends "mobile/base_mobile.html" %}
 {% block title %}Start – Magazyn SP{% endblock %}
+
 {% block content %}
 
-<h2 class="mb-3">Witaj 👋</h2>
+<div class="text-center mb-4 mt-2">
+    <div style="font-size:1.1rem; color:#adc4e3;">
+        Witaj, <strong style="color:#fff;">
+            {{ user.full_name_or_username if user else '' }}
+        </strong>
+    </div>
+    {% if notifications_danger > 0 %}
+    <div class="mt-2">
+        <span class="badge bg-danger" style="font-size:0.95rem; padding:6px 14px;">
+            <i class="bi bi-exclamation-triangle"></i>
+            {{ notifications_danger }} pilnych powiadomień
+        </span>
+    </div>
+    {% endif %}
+</div>
 
-<a href="{{ url_for('mobile_controller.mobile_scan') }}"
-   class="btn btn-success btn-touch">
-    <i class="bi bi-box-arrow-right" style="font-size:1.6rem;"></i>
-    Wydaj przedmiot
-</a>
+<!-- SIATKA 2x2 -->
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:0 4px;">
+
+    <!-- Wydaj -->
+    <a href="{{ url_for('mobile_controller.mobile_scan') }}"
+       style="text-decoration:none;">
+        <div class="mobile-tile">
+            <div class="mobile-tile-icon" style="background:#1a5c35;">
+                <i class="bi bi-box-arrow-right"></i>
+            </div>
+            <div class="mobile-tile-label">Wydaj</div>
+            <div class="mobile-tile-sub">Skanuj kartę NFC</div>
+        </div>
+    </a>
+
+    <!-- Strażacy -->
+    <a href="{{ url_for('mobile_controller.mobile_firefighters') }}"
+       style="text-decoration:none;">
+        <div class="mobile-tile">
+            <div class="mobile-tile-icon" style="background:#11284d;">
+                <i class="bi bi-people"></i>
+            </div>
+            <div class="mobile-tile-label">Strażacy</div>
+            <div class="mobile-tile-sub">Lista i wyposażenie</div>
+        </div>
+    </a>
+
+    <!-- Powiadomienia -->
+    <a href="{{ url_for('mobile_controller.mobile_notifications') }}"
+       style="text-decoration:none;">
+        <div class="mobile-tile">
+            <div class="mobile-tile-icon"
+                 style="background:{% if notifications_danger > 0 %}#7a1a1a{% else %}#1a355c{% endif %};">
+                <i class="bi bi-bell"></i>
+                {% if notifications_danger > 0 %}
+                <span class="mobile-tile-badge">{{ notifications_danger }}</span>
+                {% endif %}
+            </div>
+            <div class="mobile-tile-label">Powiadomienia</div>
+            <div class="mobile-tile-sub">
+                {% if notifications_danger > 0 %}
+                    {{ notifications_danger }} pilnych
+                {% else %}
+                    Wszystko OK
+                {% endif %}
+            </div>
+        </div>
+    </a>
+
+    <!-- Pełny widok -->
+    <a href="{{ url_for('dashboard_controller.dashboard') }}?desktop=1"
+       style="text-decoration:none;">
+        <div class="mobile-tile">
+            <div class="mobile-tile-icon" style="background:#3d2e10;">
+                <i class="bi bi-grid"></i>
+            </div>
+            <div class="mobile-tile-label">Pełny widok</div>
+            <div class="mobile-tile-sub">Panel zarządzania</div>
+        </div>
+    </a>
+
+</div>
 
 {% endblock %}

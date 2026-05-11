@@ -28,14 +28,15 @@ def role_required(required_roles=None):
     return decorator
 
 
-# ---------------------------------------------------------
-# DASHBOARD — NIE czyścimy last_nfc_scan
-# ---------------------------------------------------------
 @mobile_bp.route("/")
 @role_required()
 def mobile_dashboard():
+    from services.notification_service import NotificationService
     session.pop("force_desktop", None)
-    return render_template("mobile/dashboard.html")
+    session.pop("last_nfc_scan", None)
+    counts = NotificationService.get_notifications_count()
+    return render_template("mobile/dashboard.html",
+                           notifications_danger=counts["danger"])
 
 
 # ---------------------------------------------------------
@@ -49,6 +50,33 @@ def mobile_scan():
     return render_template("mobile/scan.html", firefighters=firefighters)
 
 
+# ---------------------------------------------------------
+# LISTA STRAŻAKÓW (mobilna)
+# ---------------------------------------------------------
+
+@mobile_bp.route("/firefighters")
+@role_required()
+def mobile_firefighters():
+    from services.notification_service import NotificationService
+    firefighters = FirefighterService.get_all_active()
+    return render_template("mobile/firefighters.html", firefighters=firefighters)
+
+
+# ---------------------------------------------------------
+# POWIADOMIENIA (mobilne)
+# ---------------------------------------------------------
+
+@mobile_bp.route("/notifications")
+@role_required()
+def mobile_notifications():
+    from services.notification_service import NotificationService
+    notifications = NotificationService.get_notifications()
+    counts        = NotificationService.get_notifications_count()
+    return render_template("mobile/notifications.html",
+                           notifications=notifications,
+                           counts=counts)
+    
+    
 # ---------------------------------------------------------
 # FIREFIGHTER — korzysta tylko z sesji, bez request.args
 # ---------------------------------------------------------

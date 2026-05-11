@@ -1,8 +1,11 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from functools import wraps
+from datetime import date as dt
 
 from services.firefighter_service import FirefighterService
 from services.user_service import UserService
+from services.catalog_service import CatalogService
+from services.item_service import ItemService
 from models.firefighter_model import Firefighter
 from models.item_model import RoleRequiredItem, Item
 
@@ -44,9 +47,15 @@ def add_firefighter_form():
 def add_firefighter_post():
     first_name   = request.form.get("first_name")
     last_name    = request.form.get("last_name")
-    nfc_username = request.form.get("nfc_username")
-    nfc_hash     = request.form.get("nfc_hash")
+    nfc_username = request.form.get("nfc_username") or None
+    nfc_hash     = request.form.get("nfc_hash") or None
     role         = request.form.get("role", "strazak")
+
+    if nfc_hash:
+        existing = FirefighterService.get_by_nfc_hash(nfc_hash)
+        if existing:
+            flash(f"Ta karta NFC jest już przypisana do: {existing.full_name}.", "danger")
+            return redirect(url_for("firefighter_controller.add_firefighter_form"))
 
     firefighter = FirefighterService.create(
         first_name=first_name,
@@ -74,13 +83,11 @@ def firefighter_detail(id):
 
     issued_items = FirefighterService.get_issued_items(id)
 
-    # Wyposażenie obowiązkowe
     required_items = RoleRequiredItem.query.filter_by(
         role=firefighter.role,
         is_required=True
     ).all()
 
-    # Mapa catalog_id -> item_id dla wydanych przedmiotów
     issued_by_catalog = {}
     for item in issued_items:
         if item.catalog_id and item.catalog_id not in issued_by_catalog:
@@ -98,11 +105,12 @@ def firefighter_detail(id):
             "item_id":    issued_by_catalog.get(req.catalog_id),
         })
 
-    # Przedmioty spoza wyposażenia obowiązkowego
     extra_items = [
         item for item in issued_items
         if item.catalog_id not in required_catalog_ids
     ]
+
+    catalog = CatalogService.get_all_active()
 
     return render_template(
         "firefighters/detail.html",
@@ -110,7 +118,63 @@ def firefighter_detail(id):
         issued_items=issued_items,
         equipment_status=equipment_status,
         extra_items=extra_items,
+        catalog=catalog,
+        today=dt.today().isoformat()
     )
+
+
+@firefighter_bp.route("/firefighters/<int:id>/issue", methods=["POST"])
+@role_required(["manager", "admin"])
+def issue_from_detail(id):
+    firefighter = FirefighterService.get_by_id(id)
+    if not firefighter:
+        flash("Nie znaleziono strażaka.", "danger")
+        return redirect(url_for("firefighter_controller.firefighters_list"))
+
+    catalog_id = request.form.get("catalog_id")
+    issue_date = request.form.get("issue_date") or dt.today().isoformat()
+    clothing   = request.form.get("clothing_card_number") or None
+    notes      = request.form.get("notes") or None
+
+    if not catalog_id:
+        flash("Wybierz przedmiot.", "danger")
+        return redirect(url_for("firefighter_controller.firefighter_detail", id=id))
+
+    catalog_entry = CatalogService.get_by_id(int(catalog_id))
+    if not catalog_entry:
+        flash("Nie znaleziono przedmiotu w katalogu.", "danger")
+        return redirect(url_for("firefighter_controller.firefighter_detail", id=id))
+
+    user = UserService.get_user_by_cas_username(session["CAS_USERNAME"])
+
+    item = ItemService.create(
+        name=catalog_entry.name,
+        unit_of_measure=catalog_entry.unit_of_measure,
+        usage_period_months=catalog_entry.usage_period_months,
+        notes=notes or catalog_entry.default_notes,
+        catalog_id=catalog_entry.catalog_id
+    )
+
+    if not item:
+        flash("Błąd podczas tworzenia przedmiotu.", "danger")
+        return redirect(url_for("firefighter_controller.firefighter_detail", id=id))
+
+    item = ItemService.issue_item(
+        item_id=item.item_id,
+        firefighter_id=id,
+        issue_date=issue_date,
+        performed_by_user_id=user.user_id,
+        clothing_card_number=clothing,
+        notes=notes,
+        nfc_scan=False
+    )
+
+    if item:
+        flash(f"Wydano: {catalog_entry.name} dla {firefighter.full_name}.", "success")
+    else:
+        flash("Błąd podczas wydania.", "danger")
+
+    return redirect(url_for("firefighter_controller.firefighter_detail", id=id))
 
 
 @firefighter_bp.route("/firefighters/<int:id>/edit", methods=["GET"])
@@ -128,9 +192,15 @@ def edit_firefighter_form(id):
 def edit_firefighter_post(id):
     first_name   = request.form.get("first_name")
     last_name    = request.form.get("last_name")
-    nfc_username = request.form.get("nfc_username")
-    nfc_hash     = request.form.get("nfc_hash")
+    nfc_username = request.form.get("nfc_username") or None
+    nfc_hash     = request.form.get("nfc_hash") or None
     role         = request.form.get("role", "strazak")
+
+    if nfc_hash:
+        existing = FirefighterService.get_by_nfc_hash(nfc_hash)
+        if existing and existing.firefighter_id != id:
+            flash(f"Ta karta NFC jest już przypisana do: {existing.full_name}.", "danger")
+            return redirect(url_for("firefighter_controller.edit_firefighter_form", id=id))
 
     updated = FirefighterService.update(
         id,
@@ -174,7 +244,6 @@ def delete_firefighter(id):
 @firefighter_bp.route("/api/firefighters/by-nfc/<nfc_hash>")
 @role_required()
 def api_firefighter_by_nfc(nfc_hash):
-    from flask import jsonify
     firefighter = FirefighterService.get_by_nfc_hash(nfc_hash)
     if not firefighter:
         return jsonify({"error": "Nie znaleziono"}), 404

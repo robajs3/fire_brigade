@@ -1,0 +1,68 @@
+{% extends "mobile/base_mobile.html" %}
+{% block title %}Strażacy{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 style="color:#fff; margin:0;">Strażacy</h3>
+    {% if user and user.role in ['admin', 'manager'] %}
+    <a href="{{ url_for('firefighter_controller.add_firefighter_form') }}?desktop=1"
+       class="btn btn-success btn-sm">
+        <i class="bi bi-plus"></i> Dodaj
+    </a>
+    {% endif %}
+</div>
+
+<input type="text" id="search-ff" class="form-control mb-3"
+       placeholder="Szukaj po nazwisku..."
+       style="background:#1a355c; color:#fff; border:1px solid #234a7a;
+              padding:12px; border-radius:12px; font-size:1rem;">
+
+{% if not firefighters %}
+    <div class="mobile-card" style="text-align:center; color:#adc4e3;">
+        Brak aktywnych strażaków.
+    </div>
+{% else %}
+    {% for ff in firefighters %}
+    <a href="{{ url_for('mobile_controller.mobile_firefighter', firefighter_id=ff.firefighter_id) }}"
+       style="text-decoration:none;"
+       class="ff-row" data-name="{{ ff.full_name|lower }}">
+        <div class="mobile-card d-flex justify-content-between align-items-center"
+             style="background:#1a355c; margin-bottom:10px; padding:14px 18px;">
+            <div>
+                <div style="color:#fff; font-weight:700; font-size:1.05rem;">
+                    {{ ff.full_name }}
+                </div>
+                <div style="color:#adc4e3; font-size:0.85rem;">
+                    {{ ff.role_label }}
+                </div>
+            </div>
+            <div class="d-flex flex-column align-items-end gap-1">
+                {% if ff.has_nfc %}
+                    <span class="badge bg-success" style="font-size:0.75rem;">
+                        <i class="bi bi-upc-scan"></i> NFC
+                    </span>
+                {% else %}
+                    <span class="badge bg-secondary" style="font-size:0.75rem;">
+                        Brak NFC
+                    </span>
+                {% endif %}
+                <i class="bi bi-chevron-right" style="color:#adc4e3;"></i>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById("search-ff").addEventListener("input", function() {
+        const q = this.value.toLowerCase();
+        document.querySelectorAll(".ff-row").forEach(row => {
+            row.style.display = row.dataset.name.includes(q) ? "" : "none";
+        });
+    });
+</script>
+{% endblock %}

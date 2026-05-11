@@ -1,0 +1,67 @@
+{% extends "mobile/base_mobile.html" %}
+{% block title %}Powiadomienia{% endblock %}
+
+{% block content %}
+
+<h3 class="mb-3" style="color:#fff;">Powiadomienia</h3>
+
+<!-- Liczniki -->
+<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:20px;">
+    <div class="mobile-card text-center" style="padding:14px 8px; background:#7a1a1a;">
+        <div style="font-size:1.8rem; font-weight:700; color:#fff;">{{ counts.danger }}</div>
+        <div style="font-size:0.75rem; color:#fca5a5;">Pilne</div>
+    </div>
+    <div class="mobile-card text-center" style="padding:14px 8px; background:#3d2e10;">
+        <div style="font-size:1.8rem; font-weight:700; color:#fff;">{{ counts.warning }}</div>
+        <div style="font-size:0.75rem; color:#fcd34d;">Uwaga</div>
+    </div>
+    <div class="mobile-card text-center" style="padding:14px 8px; background:#11284d;">
+        <div style="font-size:1.8rem; font-weight:700; color:#fff;">{{ counts.info }}</div>
+        <div style="font-size:0.75rem; color:#93c5fd;">Info</div>
+    </div>
+</div>
+
+{% if counts.total == 0 %}
+<div class="mobile-card text-center" style="color:#4caf82;">
+    <div style="font-size:3rem;">✅</div>
+    <div style="font-size:1.1rem; font-weight:600; margin-top:8px;">Wszystko w porządku</div>
+    <div style="color:#adc4e3; font-size:0.9rem;">Brak aktywnych powiadomień</div>
+</div>
+{% endif %}
+
+{% for n in notifications %}
+<div class="mobile-card mb-2"
+     style="background:{% if n.severity == 'danger' %}#3d1010{% elif n.severity == 'warning' %}#3d2e10{% else %}#11284d{% endif %};
+            border-left: 4px solid {% if n.severity == 'danger' %}#ef4444{% elif n.severity == 'warning' %}#f59e0b{% else %}#3b82f6{% endif %};">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div style="flex:1;">
+            <div style="font-size:0.75rem; color:#adc4e3; text-transform:uppercase; margin-bottom:4px;">
+                {% if n.type == 'missing_equipment' %}
+                    <i class="bi bi-exclamation-triangle"></i> Brak wyposażenia
+                {% elif n.type == 'no_nfc' %}
+                    <i class="bi bi-wifi-off"></i> Brak NFC
+                {% else %}
+                    <i class="bi bi-clock"></i> Wymiana
+                {% endif %}
+            </div>
+            <div style="color:#fff; font-weight:600; font-size:0.95rem;">
+                {{ n.message }}
+            </div>
+            {% if n.type == 'expiry' and n.days_remaining is defined %}
+            <div style="color:#adc4e3; font-size:0.8rem; margin-top:4px;">
+                Wygasa: {{ n.expiry_date }}
+            </div>
+            {% endif %}
+        </div>
+        {% if n.firefighter_id %}
+        <a href="{{ url_for('mobile_controller.mobile_firefighter', firefighter_id=n.firefighter_id) }}"
+           class="btn btn-sm ms-2"
+           style="background:#1a355c; color:#fff; border:none; white-space:nowrap;">
+            <i class="bi bi-arrow-right"></i>
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}

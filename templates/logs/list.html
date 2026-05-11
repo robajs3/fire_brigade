@@ -8,7 +8,6 @@
         <h2><i class="bi bi-journal-text"></i> Logi operacji magazynowych</h2>
     </div>
 
-    <!-- Filtry -->
     <form method="GET" action="{{ url_for('log_controller.logs_list') }}" class="card mb-4 shadow-sm">
         <div class="card-body">
             <div class="row g-3 align-items-end">
@@ -16,7 +15,7 @@
                 <div class="col-md-3">
                     <label class="form-label">Akcja</label>
                     <select name="action" class="form-select">
-                        <option value="all" {% if action_filter == 'all' %}selected{% endif %}>Wszystkie</option>
+                        <option value="all"      {% if action_filter == 'all' %}selected{% endif %}>Wszystkie</option>
                         <option value="issued"   {% if action_filter == 'issued' %}selected{% endif %}>Wydanie</option>
                         <option value="consumed" {% if action_filter == 'consumed' %}selected{% endif %}>Zużycie</option>
                     </select>
@@ -31,7 +30,7 @@
                     </select>
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label">Strażak</label>
                     <select name="firefighter_id" class="form-select">
                         <option value="">Wszyscy</option>
@@ -45,18 +44,8 @@
                 </div>
 
                 <div class="col-md-2">
-                    <label class="form-label">Pokaż ostatnich</label>
-                    <select name="limit" class="form-select">
-                        <option value="50"  {% if limit == 50 %}selected{% endif %}>50</option>
-                        <option value="100" {% if limit == 100 %}selected{% endif %}>100</option>
-                        <option value="250" {% if limit == 250 %}selected{% endif %}>250</option>
-                        <option value="500" {% if limit == 500 %}selected{% endif %}>500</option>
-                    </select>
-                </div>
-
-                <div class="col-md-1">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-funnel"></i>
+                        <i class="bi bi-funnel"></i> Filtruj
                     </button>
                 </div>
 
@@ -64,7 +53,6 @@
         </div>
     </form>
 
-    <!-- Tabela logów -->
     {% if logs %}
     <div class="card shadow-sm">
         <div class="card-body p-0">
@@ -87,7 +75,6 @@
                             <td style="white-space:nowrap;">
                                 {{ log.performed_at.strftime('%d.%m.%Y %H:%M') }}
                             </td>
-
                             <td>
                                 {% if firefighter %}
                                     <a href="{{ url_for('firefighter_controller.firefighter_detail', id=firefighter.firefighter_id) }}">
@@ -97,7 +84,6 @@
                                     <span class="text-muted">—</span>
                                 {% endif %}
                             </td>
-
                             <td>
                                 {% if log.action == 'issued' %}
                                     <span class="badge bg-success">Wydanie</span>
@@ -107,13 +93,11 @@
                                     <span class="badge bg-light text-dark">{{ log.action }}</span>
                                 {% endif %}
                             </td>
-
                             <td>
                                 <a href="{{ url_for('item_controller.item_detail', id=item.item_id) }}">
                                     {{ item.name }}
                                 </a>
                             </td>
-
                             <td>
                                 {% if log.nfc_scan %}
                                     <span class="badge bg-primary">
@@ -125,14 +109,8 @@
                                     </span>
                                 {% endif %}
                             </td>
-
-                            <td>
-                                {{ performed_by_user.full_name if performed_by_user else "—" }}
-                            </td>
-
-                            <td>
-                                <small class="text-muted">{{ log.notes or "—" }}</small>
-                            </td>
+                            <td>{{ performed_by_user.full_name if performed_by_user else "—" }}</td>
+                            <td><small class="text-muted">{{ log.notes or "—" }}</small></td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -140,11 +118,9 @@
             </div>
         </div>
     </div>
-
     <div class="text-muted mt-2" style="font-size:0.9rem;">
         Wyświetlono {{ logs|length }} wpisów.
     </div>
-
     {% else %}
     <div class="alert alert-info">Brak logów dla wybranych filtrów.</div>
     {% endif %}

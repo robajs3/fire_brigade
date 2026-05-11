@@ -13,15 +13,6 @@
     <div class="row mb-4">
 
         <div class="col-md-3">
-            <div class="card text-white bg-primary shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">Przedmioty w magazynie</h5>
-                    <p class="card-text fs-3">{{ in_stock_count }}</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
             <div class="card text-white bg-info shadow-sm">
                 <div class="card-body">
                     <h5 class="card-title">Wydane przedmioty</h5>
@@ -68,7 +59,6 @@
                             <th>Akcja</th>
                             <th>Przedmiot</th>
                             <th>Strażak</th>
-                            <th>Wykonał</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -88,7 +78,6 @@
                             </td>
                             <td>{{ item.name }}</td>
                             <td>{{ firefighter.full_name if firefighter else '-' }}</td>
-                            <td>{{ log.performed_by_user.full_name if log.performed_by_user else '-' }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

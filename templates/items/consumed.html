@@ -4,7 +4,7 @@
 <div class="container">
     <h2 class="mb-4">Archiwum zużytych przedmiotów</h2>
     <div class="alert alert-info">
-        To są przedmioty oznaczone jako <strong>zużyte</strong> – archiwum tylko do odczytu.
+        To są przedmioty oznaczone jako <strong>zużyte</strong>.
     </div>
     <div class="card shadow-sm">
         <div class="card-body p-0">
@@ -19,6 +19,9 @@
                             <th>Data zużycia</th>
                             <th>Nr karty odzież.</th>
                             <th>Uwagi</th>
+                            {% if user and user.role == 'admin' %}
+                            <th>Akcje</th>
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -30,6 +33,19 @@
                             <td>{{ row.consumed_at.strftime('%d.%m.%Y') if row.consumed_at else "—" }}</td>
                             <td>{{ row.item.clothing_card_number or "—" }}</td>
                             <td>{{ row.item.notes or "—" }}</td>
+                            {% if user and user.role == 'admin' %}
+                            <td>
+                                <form method="POST"
+                                      action="{{ url_for('item_controller.delete_item', id=row.item.item_id) }}"
+                                      style="display:inline"
+                                      onsubmit="return confirm('Czy na pewno usunąć {{ row.item.name }}? Tej operacji nie można cofnąć.');">
+                                    <input type="hidden" name="next" value="{{ url_for('item_controller.items_consumed') }}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                        <i class="bi bi-trash"></i> Usuń
+                                    </button>
+                                </form>
+                            </td>
+                            {% endif %}
                         </tr>
                         {% endfor %}
                     </tbody>

@@ -1,11 +1,9 @@
 {% extends "base.html" %}
-
 {% block title %}Przedmiot: {{ item.name }}{% endblock %}
 
 {% block content %}
 <div class="container">
 
-    <!-- Nagłówek -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>
             Przedmiot: {{ item.name }}
@@ -21,24 +19,14 @@
 
     <div class="row">
 
-        <!-- LEWA KOLUMNA -->
         <div class="col-md-5">
-
             <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    Dane przedmiotu
-                </div>
+                <div class="card-header bg-primary text-white">Dane przedmiotu</div>
                 <div class="card-body">
                     <table class="table table-sm">
                         <tbody>
-                            <tr>
-                                <th>Nazwa</th>
-                                <td>{{ item.name }}</td>
-                            </tr>
-                            <tr>
-                                <th>Jednostka miary</th>
-                                <td>{{ item.unit_of_measure }}</td>
-                            </tr>
+                            <tr><th>Nazwa</th><td>{{ item.name }}</td></tr>
+                            <tr><th>Jednostka miary</th><td>{{ item.unit_of_measure }}</td></tr>
                             <tr>
                                 <th>Okres używania</th>
                                 <td>
@@ -49,18 +37,9 @@
                                     {% endif %}
                                 </td>
                             </tr>
-                            <tr>
-                                <th>Nr karty odzieżowej</th>
-                                <td>{{ item.clothing_card_number or "—" }}</td>
-                            </tr>
-                            <tr>
-                                <th>Uwagi</th>
-                                <td>{{ item.notes or "—" }}</td>
-                            </tr>
-                            <tr>
-                                <th>Data dodania</th>
-                                <td>{{ item.created_at.strftime('%d.%m.%Y') }}</td>
-                            </tr>
+                            <tr><th>Nr karty odzieżowej</th><td>{{ item.clothing_card_number or "—" }}</td></tr>
+                            <tr><th>Uwagi</th><td>{{ item.notes or "—" }}</td></tr>
+                            <tr><th>Data dodania</th><td>{{ item.created_at.strftime('%d.%m.%Y') }}</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -68,9 +47,7 @@
 
             {% if item.is_issued %}
             <div class="card border-primary mb-4">
-                <div class="card-header bg-primary text-white">
-                    Wydanie
-                </div>
+                <div class="card-header bg-primary text-white">Wydanie</div>
                 <div class="card-body">
                     <table class="table table-sm">
                         <tbody>
@@ -82,10 +59,7 @@
                                     </a>
                                 </td>
                             </tr>
-                            <tr>
-                                <th>Data wydania</th>
-                                <td>{{ item.issue_date.strftime('%d.%m.%Y') }}</td>
-                            </tr>
+                            <tr><th>Data wydania</th><td>{{ item.issue_date.strftime('%d.%m.%Y') }}</td></tr>
                             <tr>
                                 <th>Wygasa</th>
                                 <td>
@@ -115,30 +89,22 @@
                 </div>
             </div>
             {% endif %}
-
         </div>
 
-        <!-- PRAWA KOLUMNA – AKCJE -->
         <div class="col-md-7">
-
             <div class="card mb-4">
-                <div class="card-header bg-dark text-white">
-                    Akcje
-                </div>
+                <div class="card-header bg-dark text-white">Akcje</div>
                 <div class="card-body">
 
                     {% if not item.is_consumed %}
 
-                        <!-- Edytuj -->
                         <a href="{{ url_for('item_controller.edit_item_form', id=item.item_id) }}"
                            class="btn btn-outline-secondary mb-3">
                             ✏️ Edytuj
                         </a>
-
                         <br>
 
                         {% if item.is_in_stock %}
-                            <!-- Wydaj -->
                             <a href="{{ url_for('item_controller.issue_item_form', id=item.item_id) }}"
                                class="btn btn-success btn-lg mb-3">
                                 📦 Wydaj strażakowi
@@ -147,8 +113,6 @@
                         {% endif %}
 
                         {% if item.is_issued %}
-
-                            <!-- Zużyj -->
                             <form method="POST"
                                   action="{{ url_for('item_controller.consume_item', id=item.item_id) }}"
                                   class="d-inline"
@@ -159,36 +123,18 @@
 
                     {% else %}
                         <div class="alert alert-secondary mb-3">
-                            Przedmiot zużyty – brak dostępnych akcji.
+                            Przedmiot zużyty – aby go usunąć przejdź do zakładki Zużyte.
                         </div>
-                    {% endif %}
-
-                    <!-- Usuń – zawsze widoczny dla admina -->
-                    {% if user and user.role == 'admin' %}
-                    <hr>
-                    <form method="POST"
-      action="{{ url_for('item_controller.delete_item', id=item.item_id) }}"
-      class="d-inline"
-      onsubmit="return confirm('Czy na pewno USUNĄĆ przedmiot {{ item.name }}? Tej operacji nie można cofnąć.');">
-    <input type="hidden" name="next" value="{{ url_for('firefighter_controller.firefighters_list') }}">
-    <button class="btn btn-outline-danger btn-sm">
-        🗑️ Usuń przedmiot z systemu
-    </button>
-</form>
                     {% endif %}
 
                 </div>
             </div>
-
         </div>
 
     </div>
 
-    <!-- HISTORIA WYDAŃ -->
     <div class="card mt-4">
-        <div class="card-header bg-secondary text-white">
-            Historia wydań
-        </div>
+        <div class="card-header bg-secondary text-white">Historia wydań</div>
         <div class="card-body p-0">
             {% if item_log %}
             <div class="table-responsive">
