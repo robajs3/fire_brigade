@@ -8,6 +8,7 @@ class Firefighter(db.Model):
         "kierownik_gbr":    "Kierownik GBR",
         "strazak":          "Strażak",
         "ratownik_medyczny": "Ratownik Medyczny (Pielęgniarz)",
+        "wspolny":           "Użytek wspólny",
     }
 
     firefighter_id = db.Column(db.Integer, primary_key=True)

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h2>Stan SAP – skład S032</h2>
+    <table class="table table-striped">
+        <thead class="table-dark">
+            <tr><th>MATNR</th><th>Nazwa</th><th>Ilość</th><th>JM</th></tr>
+        </thead>
+        <tbody>
+            {% for row in stock %}
+            <tr>
+                <td>{{ row.matnr }}</td>
+                <td>{{ row.maktx }}</td>
+                <td>{{ row.labst }}</td>
+                <td>{{ row.mei }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

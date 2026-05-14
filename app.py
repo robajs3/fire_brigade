@@ -1,11 +1,16 @@
+import os
+os.environ["PATH"] = r"D:\Programs\nwrfc\nwrfcsdk\lib;" + os.environ.get("PATH", "")
+
 import sys
 sys.dont_write_bytecode = True
+
 from flask import Flask, session, request, redirect, url_for
 from config import Config
-from waitress import serve
+
 from models.user_model import db, User
 from models.firefighter_model import Firefighter
 from models.item_model import Item
+
 from controllers.dashboard_controller import dashboard_bp
 from controllers.user_controller import user_bp
 from controllers.firefighter_controller import firefighter_bp
@@ -15,11 +20,17 @@ from controllers.mobile_controller import mobile_bp
 from controllers.catalog_controller import catalog_bp
 from controllers.log_controller import log_bp
 
+from flask_apscheduler import APScheduler
+
+scheduler = APScheduler()
+
 
 def create_app():
     app = Flask(__name__, static_url_path="/Sp/static")
     app.config.from_object(Config)
+
     db.init_app(app)
+
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(user_bp)
     app.register_blueprint(firefighter_bp)
@@ -40,30 +51,49 @@ def create_app():
 
     @app.before_request
     def redirect_mobile():
-        # Nie przekierowuj tych ścieżek nigdy
         skip_prefixes = ["/Sp/mobile", "/Sp/static", "/Sp/api", "/Sp/cas", "/Sp/dev-login"]
         if any(request.path.startswith(p) for p in skip_prefixes):
             return
-
-        # Użytkownik kliknął "pełny widok" – zapisz w sesji i nie przekierowuj
         if request.args.get("desktop") == "1":
             session["force_desktop"] = True
             return
-
-        # Użytkownik kliknął "widok mobilny" – wyczyść flagę i przekieruj na mobile
         if request.args.get("mobile") == "1":
             session.pop("force_desktop", None)
             return redirect(url_for("mobile_controller.mobile_dashboard"))
-
-        # Jeśli użytkownik wybrał desktop – nie przekierowuj
         if session.get("force_desktop"):
             return
-
-        # Wykryj urządzenie mobilne i przekieruj
         ua = request.headers.get("User-Agent", "").lower()
         mobile_keywords = ["android", "iphone", "ipad", "mobile", "tablet"]
         if any(kw in ua for kw in mobile_keywords):
             return redirect(url_for("mobile_controller.mobile_dashboard"))
+
+    with app.app_context():
+        db.create_all()
+        # Synchronizacja SAP przy starcie
+        try:
+            from services.sap_service import SAPService
+            result = SAPService.sync_stock_to_catalog()
+            print(f"[SAP] Synchronizacja przy starcie: "
+                  f"zaktualizowano={result['updated']}, "
+                  f"utworzono={result['created']}")
+        except Exception as e:
+            print(f"[SAP] Pominięto synchronizację przy starcie: {e}")
+
+    # Scheduler – auto-sync co 5 minut
+    app.config["SCHEDULER_API_ENABLED"] = False
+    scheduler.init_app(app)
+
+    @scheduler.task("interval", id="sap_sync", minutes=5, misfire_grace_time=60)
+    def sap_sync_job():
+        with app.app_context():
+            try:
+                from services.sap_service import SAPService
+                result = SAPService.sync_stock_to_catalog()
+                print(f"[SAP] Auto-sync: {result}")
+            except Exception as e:
+                print(f"[SAP] Błąd auto-sync: {e}")
+
+    scheduler.start()
 
     return app
 

@@ -45,7 +45,7 @@
                     </p>
                 </div>
             </div>
-
+{% if firefighter.role != 'wspolny' %}
             <div class="card mb-4">
                 <div class="card-header bg-secondary text-white">Wymiary ciała</div>
                 <div class="card-body">
@@ -64,13 +64,81 @@
                     </table>
                 </div>
             </div>
+{% endif %}
+            <!-- HISTORIA OPERACJI -->
+<div class="card mb-4">
+    <div class="card-header bg-dark text-white">
+        <i class="bi bi-journal-text"></i> Historia operacji
+    </div>
+    {% if logs %}
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data</th>
+                        <th>Akcja</th>
+                        <th>Przedmiot</th>
+                        <th>Identyfikacja</th>
+                        <th>Wykonał</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log, item, performed_by in logs %}
+                    <tr>
+                        <td style="white-space:nowrap;">
+                            {{ log.performed_at.strftime('%d.%m.%Y %H:%M') }}
+                        </td>
+                        <td>
+                            {% if log.action == 'issued' %}
+                                <span class="badge bg-success">Wydanie</span>
+                            {% elif log.action == 'returned' %}
+                                <span class="badge bg-info text-dark">Zwrot</span>
+                            {% elif log.action == 'consumed' %}
+                                <span class="badge bg-secondary">Zużycie</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">{{ log.action }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('item_controller.item_detail', id=item.item_id) }}">
+                                {{ item.name }}
+                            </a>
+                        </td>
+                        <td>
+                            {% if log.nfc_scan %}
+                                <span class="badge bg-primary">
+                                    <i class="bi bi-upc-scan"></i> NFC
+                                </span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">
+                                    <i class="bi bi-hand-index"></i> Ręcznie
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>{{ performed_by.full_name if performed_by else '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
+    </div>
+    <div class="card-footer text-muted" style="font-size:0.85rem;">
+        Ostatnie {{ logs|length }} operacji.
+    </div>
+    {% else %}
+    <div class="card-body text-muted">Brak historii operacji.</div>
+    {% endif %}
+</div>
+        </div>
+        
 
         <!-- PRAWA KOLUMNA -->
         <div class="col-md-7">
 
-            <!-- WYPOSAŻENIE OBOWIĄZKOWE -->
-            <div class="card mb-4">
+{% if firefighter.role != 'wspolny' %}
+<!-- WYPOSAŻENIE OBOWIĄZKOWE -->
+<div class="card mb-4">
                 <div class="card-header bg-dark text-white">
                     <i class="bi bi-list-check"></i> Wyposażenie obowiązkowe
                     {% if equipment_status %}
@@ -131,7 +199,9 @@
                     </table>
                     {% endif %}
                 </div>
-            </div>
+</div>
+{% endif %}
+            
 
             <!-- POZOSTAŁE WYDANE PRZEDMIOTY -->
             {% if extra_items %}

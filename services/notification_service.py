@@ -7,9 +7,6 @@ from models.firefighter_model import Firefighter
 
 class NotificationService:
 
-    # ---------------------------------------------------------
-    # 1. Zbliżające się wymiany
-    # ---------------------------------------------------------
     @staticmethod
     def get_expiry_notifications():
         today      = date.today()
@@ -53,46 +50,42 @@ class NotificationService:
         notifications.sort(key=lambda n: (severity_order[n["severity"]], n["days_remaining"]))
         return notifications
 
-    # ---------------------------------------------------------
-    # 2. Brak NFC
-    # ---------------------------------------------------------
     @staticmethod
     def get_no_nfc_notifications():
         firefighters = Firefighter.query.filter_by(is_active=True).all()
         notifications = []
         for ff in firefighters:
+            if ff.role == "wspolny":
+                continue
             if not ff.has_nfc:
                 notifications.append({
-                    "type":           "no_nfc",
-                    "firefighter_id": ff.firefighter_id,
+                    "type":             "no_nfc",
+                    "firefighter_id":   ff.firefighter_id,
                     "firefighter_name": ff.full_name,
-                    "role_label":     ff.role_label,
-                    "severity":       "warning",
-                    "message":        f"{ff.full_name} ({ff.role_label}) nie ma przypisanej karty NFC",
+                    "role_label":       ff.role_label,
+                    "severity":         "warning",
+                    "message":          f"{ff.full_name} ({ff.role_label}) nie ma przypisanej karty NFC",
                 })
         return notifications
 
-    # ---------------------------------------------------------
-    # 3. Brak wymaganego wyposażenia (tylko strażacy z NFC)
-    # ---------------------------------------------------------
     @staticmethod
     def get_missing_equipment_notifications():
         notifications = []
 
-        # Tylko strażacy z NFC
         firefighters = Firefighter.query.filter(
             Firefighter.is_active.is_(True),
             Firefighter.nfc_hash.is_not(None)
         ).all()
 
         for ff in firefighters:
-            # Wymagane pozycje dla tej roli
+            if ff.role == "wspolny":
+                continue
+
             required = RoleRequiredItem.query.filter_by(
                 role=ff.role,
                 is_required=True
             ).all()
 
-            # Co strażak ma aktualnie wydane (nie zużyte)
             issued_catalog_ids = db.session.query(Item.catalog_id).filter(
                 Item.firefighter_id == ff.firefighter_id,
                 Item.is_consumed.is_(False),
@@ -115,9 +108,6 @@ class NotificationService:
 
         return notifications
 
-    # ---------------------------------------------------------
-    # Wszystkie powiadomienia
-    # ---------------------------------------------------------
     @staticmethod
     def get_notifications():
         all_notifs = (

@@ -12,7 +12,10 @@ class ItemCatalog(db.Model):
     default_notes       = db.Column(db.Text, nullable=True)
     is_active           = db.Column(db.Boolean, nullable=False, default=True)
     created_at          = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
-
+    sap_matnr  = db.Column(db.String(18), nullable=True)
+    sap_kostl  = db.Column(db.String(10), nullable=True)
+    sap_stock  = db.Column(db.Numeric(13, 3), nullable=True)
+    
     items = db.relationship("Item", backref="catalog_item", lazy="dynamic")
 
     def __repr__(self):

@@ -1,3 +1,6 @@
+print(">>> ŁADUJE items_list z pliku:", __file__)
+
+from datetime import date
 from flask import Blueprint, render_template, session, redirect, url_for, request, flash
 from functools import wraps
 
@@ -31,15 +34,16 @@ def role_required(required_roles=None):
 @item_bp.route("/items")
 @role_required()
 def items_list():
-    status = request.args.get("status", "all")
+    status  = request.args.get("status", "all")
+    grouped = ItemService.get_grouped_by_catalog()
+
     if status == "stock":
-        items = ItemService.get_all_in_stock()
+        grouped = [g for g in grouped if g["in_stock"] > 0]
     elif status == "issued":
-        items = ItemService.get_all_issued()
-    else:
-        items = ItemService.get_all_in_stock() + ItemService.get_all_issued()
+        grouped = [g for g in grouped if g["issued"] > 0]
+
     userCAS = session.get("CAS_USERNAME")
-    return render_template("items/list.html", items=items, status=status, userCAS=userCAS)
+    return render_template("items/list.html", grouped=grouped, status=status, userCAS=userCAS)
 
 
 @item_bp.route("/items/stock")
@@ -194,10 +198,23 @@ def issue_item_form(id):
     if not item:
         flash("Nie znaleziono przedmiotu.", "danger")
         return redirect(url_for("item_controller.items_list"))
+
+    sap_available = True
+    sap_stock     = None
+    if item.catalog_id:
+        sap_available, sap_stock = ItemService.check_sap_stock(item.catalog_id)
+        if not sap_available:
+            flash(f"Brak stanu magazynowego w SAP (stan: {sap_stock}). Nie można wydać.", "danger")
+            return redirect(url_for("item_controller.item_detail", id=id))
+
     firefighters = FirefighterService.get_all_active()
-    userCAS = session.get("CAS_USERNAME")
-    return render_template("items/issue.html", item=item,
-                           firefighters=firefighters, userCAS=userCAS)
+    return render_template(
+        "items/issue.html",
+        item=item,
+        firefighters=firefighters,
+        now=date.today().isoformat(),
+        sap_stock=sap_stock
+    )
 
 
 @item_bp.route("/items/<int:id>/issue", methods=["POST"])
@@ -233,7 +250,6 @@ def issue_item_post(id):
 @item_bp.route("/items/<int:id>/return", methods=["POST"])
 @role_required(["manager", "admin"])
 def return_item(id):
-    # Zapamiętaj strażaka przed zwrotem żeby wiedzieć dokąd wrócić
     item = ItemService.get_by_id(id)
     firefighter_id = item.firefighter_id if item else None
 
@@ -256,7 +272,6 @@ def return_item(id):
 @item_bp.route("/items/<int:id>/consume", methods=["POST"])
 @role_required(["manager", "admin"])
 def consume_item(id):
-    # Zapamiętaj strażaka przed zużyciem żeby wiedzieć dokąd wrócić
     item = ItemService.get_by_id(id)
     firefighter_id = item.firefighter_id if item else None
 
@@ -271,7 +286,6 @@ def consume_item(id):
     else:
         flash("Błąd podczas oznaczania.", "danger")
 
-    # Wróć do strażaka jeśli przedmiot był wydany
     if firefighter_id:
         return redirect(url_for("firefighter_controller.firefighter_detail", id=firefighter_id))
     return redirect(url_for("item_controller.items_list"))

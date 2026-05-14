@@ -45,16 +45,16 @@
             {% if firefighter.role == 'ratownik_medyczny' %}selected{% endif %}>
             Ratownik Medyczny (Pielęgniarz)
         </option>
+        <option value="wspolny">Użytek wspólny</option>
     </select>
 </div>
 
             </div>
         </div>
 
-        <!-- ========================= -->
-        <!-- WYMIARY -->
-        <!-- ========================= -->
-        <div class="card mb-4">
+{% if firefighter.role != 'wspolny' %}
+<!-- WYMIARY -->
+<div class="card mb-4">
             <div class="card-header bg-secondary text-white">
                 Wymiary (opcjonalne)
             </div>
@@ -108,6 +108,7 @@
 
             </div>
         </div>
+{% endif %}
 
         <!-- ========================= -->
         <!-- KARTA NFC -->

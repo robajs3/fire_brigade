@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from functools import wraps
 from datetime import date as dt
-
+from models.user_model import db
 from services.firefighter_service import FirefighterService
 from services.user_service import UserService
 from services.catalog_service import CatalogService
@@ -109,9 +109,19 @@ def firefighter_detail(id):
         item for item in issued_items
         if item.catalog_id not in required_catalog_ids
     ]
-
     catalog = CatalogService.get_all_active()
+    from models.item_model import IssuanceLog
+    from models.user_model import User
 
+    logs = (
+        db.session.query(IssuanceLog, Item, User)
+        .join(Item, IssuanceLog.item_id == Item.item_id)
+        .outerjoin(User, IssuanceLog.performed_by == User.user_id)
+        .filter(IssuanceLog.firefighter_id == id)
+        .order_by(IssuanceLog.performed_at.desc())
+        .limit(50)
+        .all()
+    )
     return render_template(
         "firefighters/detail.html",
         firefighter=firefighter,
@@ -119,6 +129,7 @@ def firefighter_detail(id):
         equipment_status=equipment_status,
         extra_items=extra_items,
         catalog=catalog,
+        logs=logs,
         today=dt.today().isoformat()
     )
 
@@ -147,16 +158,15 @@ def issue_from_detail(id):
 
     user = UserService.get_user_by_cas_username(session["CAS_USERNAME"])
 
-    item = ItemService.create(
-        name=catalog_entry.name,
-        unit_of_measure=catalog_entry.unit_of_measure,
-        usage_period_months=catalog_entry.usage_period_months,
-        notes=notes or catalog_entry.default_notes,
-        catalog_id=catalog_entry.catalog_id
-    )
+    # Pobierz istniejący przedmiot z magazynu zamiast tworzyć nowy
+    item = Item.query.filter_by(
+        catalog_id=int(catalog_id),
+        is_consumed=False,
+        firefighter_id=None
+    ).first()
 
     if not item:
-        flash("Błąd podczas tworzenia przedmiotu.", "danger")
+        flash(f"Brak '{catalog_entry.name}' w magazynie.", "danger")
         return redirect(url_for("firefighter_controller.firefighter_detail", id=id))
 
     item = ItemService.issue_item(
@@ -175,7 +185,6 @@ def issue_from_detail(id):
         flash("Błąd podczas wydania.", "danger")
 
     return redirect(url_for("firefighter_controller.firefighter_detail", id=id))
-
 
 @firefighter_bp.route("/firefighters/<int:id>/edit", methods=["GET"])
 @role_required(["manager", "admin"])

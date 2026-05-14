@@ -38,6 +38,40 @@
             </div>
         </div>
 
+        <!-- 🔶 SEKCJA SAP -->
+        <div class="card shadow-sm mt-3">
+            <div class="card-header bg-warning text-dark">
+                <i class="bi bi-diagram-3"></i> Integracja SAP
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Numer materiału SAP (MATNR)
+                            <span class="text-muted">(opcjonalne)</span>
+                        </label>
+                        <input type="text" name="sap_matnr" class="form-control"
+                               placeholder="np. 1234567"
+                               value="">
+                        <div class="form-text">
+                            Numer materiału z SAP – po przypisaniu wydania będą automatycznie
+                            księgowane ruchem 201.
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">MPK / Centrum kosztów (KOSTL)
+                            <span class="text-muted">(opcjonalne)</span>
+                        </label>
+                        <input type="text" name="sap_kostl" class="form-control"
+                               placeholder="np. 1005-60514"
+                               value="">
+                        <div class="form-text">
+                            Centrum kosztów przypisane do tego materiału w SAP.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Sekcja wymagań per rola -->
         <div class="card shadow-sm mt-3">
             <div class="card-header bg-dark text-white">

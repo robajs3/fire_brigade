@@ -41,6 +41,30 @@ def catalog_list():
 
 
 # ---------------------------------------------------------
+# RĘCZNA SYNCHRONIZACJA STANU Z SAP
+# ---------------------------------------------------------
+
+@catalog_bp.route("/catalog/sync-sap", methods=["POST"])
+@role_required(["admin"])
+def sync_sap():
+    from services.sap_service import SAPService
+    result = SAPService.sync_stock_to_catalog()
+    flash(
+        f"Synchronizacja SAP zakończona: "
+        f"zaktualizowano {result['updated']}, "
+        f"utworzono {result['created']} nowych pozycji "
+        f"(łącznie {result['total']}).",
+        "success"
+    )
+    return redirect(url_for("item_controller.items_list"))
+
+@catalog_bp.route("/catalog/sap-stock-preview")
+@role_required(["admin"])
+def sap_stock_preview():
+    from services.sap_service import SAPService
+    stock = SAPService.get_stock()
+    return render_template("catalog/sap_preview.html", stock=stock)
+# ---------------------------------------------------------
 # DODAWANIE
 # ---------------------------------------------------------
 
@@ -63,11 +87,17 @@ def add_catalog_post():
     notes = request.form.get("default_notes")
     usage = int(usage) if usage else None
 
+    # Pola SAP
+    sap_matnr = request.form.get("sap_matnr") or None
+    sap_kostl = request.form.get("sap_kostl") or None
+
     entry = CatalogService.create(
         name=name,
         unit_of_measure=unit,
         usage_period_months=usage,
-        default_notes=notes
+        default_notes=notes,
+        sap_matnr=sap_matnr,
+        sap_kostl=sap_kostl
     )
 
     if entry:
@@ -92,7 +122,6 @@ def edit_catalog_form(id):
         flash("Nie znaleziono pozycji.", "danger")
         return redirect(url_for("catalog_controller.catalog_list"))
 
-    # słownik: { "strazak": RoleRequiredItem(...) }
     requirements = {
         r.role: r
         for r in CatalogService.get_role_requirements(id)
@@ -117,13 +146,19 @@ def edit_catalog_post(id):
     is_active = request.form.get("is_active") == "on"
     usage     = int(usage) if usage else None
 
+    # Pola SAP
+    sap_matnr = request.form.get("sap_matnr") or None
+    sap_kostl = request.form.get("sap_kostl") or None
+
     entry = CatalogService.update(
         id,
         name=name,
         unit_of_measure=unit,
         usage_period_months=usage,
         default_notes=notes,
-        is_active=is_active
+        is_active=is_active,
+        sap_matnr=sap_matnr,
+        sap_kostl=sap_kostl
     )
 
     if entry:

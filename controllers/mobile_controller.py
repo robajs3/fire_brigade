@@ -177,27 +177,17 @@ def mobile_issue():
         flash("Nie znaleziono strażaka lub przedmiotu.", "danger")
         return redirect(url_for("mobile_controller.mobile_scan"))
 
-    existing = Item.query.filter_by(
-        firefighter_id=firefighter_id,
+    # Pobierz istniejący przedmiot z magazynu
+    item = Item.query.filter_by(
         catalog_id=catalog_id,
-        is_consumed=False
+        is_consumed=False,
+        firefighter_id=None
     ).first()
 
-    if existing:
-        item = existing
-    else:
-        item = ItemService.create(
-            name=catalog_entry.name,
-            unit_of_measure=catalog_entry.unit_of_measure,
-            usage_period_months=catalog_entry.usage_period_months,
-            notes=notes or catalog_entry.default_notes,
-            catalog_id=catalog_entry.catalog_id
-        )
-
-        if not item:
-            flash("Błąd podczas tworzenia przedmiotu.", "danger")
-            return redirect(url_for("mobile_controller.mobile_firefighter",
-                                    firefighter_id=firefighter_id))
+    if not item:
+        flash(f"Brak '{catalog_entry.name}' w magazynie.", "danger")
+        return redirect(url_for("mobile_controller.mobile_firefighter",
+                                firefighter_id=firefighter_id))
 
     item = ItemService.issue_item(
         item_id=item.item_id,
@@ -220,7 +210,6 @@ def mobile_issue():
         flash("Błąd podczas wydania przedmiotu.", "danger")
         return redirect(url_for("mobile_controller.mobile_firefighter",
                                 firefighter_id=firefighter_id))
-
 
 # ---------------------------------------------------------
 # API — jedyne miejsce gdzie ustawiamy last_nfc_scan

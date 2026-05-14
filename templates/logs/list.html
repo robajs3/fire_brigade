@@ -17,6 +17,7 @@
                     <select name="action" class="form-select">
                         <option value="all"      {% if action_filter == 'all' %}selected{% endif %}>Wszystkie</option>
                         <option value="issued"   {% if action_filter == 'issued' %}selected{% endif %}>Wydanie</option>
+                        <option value="returned" {% if action_filter == 'returned' %}selected{% endif %}>Zwrot</option>
                         <option value="consumed" {% if action_filter == 'consumed' %}selected{% endif %}>Zużycie</option>
                     </select>
                 </div>
@@ -85,13 +86,15 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if log.action == 'issued' %}
-                                    <span class="badge bg-success">Wydanie</span>
-                                {% elif log.action == 'consumed' %}
-                                    <span class="badge bg-secondary">Zużycie</span>
-                                {% else %}
-                                    <span class="badge bg-light text-dark">{{ log.action }}</span>
-                                {% endif %}
+{% if log.action == 'issued' %}
+    <span class="badge bg-success">Wydanie</span>
+{% elif log.action == 'returned' %}
+    <span class="badge bg-info text-dark">Zwrot</span>
+{% elif log.action == 'consumed' %}
+    <span class="badge bg-secondary">Zużycie</span>
+{% else %}
+    <span class="badge bg-light text-dark">{{ log.action }}</span>
+{% endif %}
                             </td>
                             <td>
                                 <a href="{{ url_for('item_controller.item_detail', id=item.item_id) }}">
