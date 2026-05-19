@@ -1,0 +1,128 @@
+{% extends "mobile/base_mobile.html" %}
+{% block title %}Logi operacji{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 style="color:#fff; margin:0;">Logi operacji</h3>
+</div>
+
+<!-- Filtry -->
+<div class="mobile-card" style="background:#11284d; padding:14px;">
+    <form method="GET" action="{{ url_for('mobile_controller.mobile_logs') }}">
+        <div class="mb-2">
+            <select name="action" class="form-select" style="font-size:0.95rem;">
+                <option value="all"      {% if action_filter == 'all' %}selected{% endif %}>Wszystkie akcje</option>
+                <option value="issued"   {% if action_filter == 'issued' %}selected{% endif %}>Wydania</option>
+                <option value="consumed" {% if action_filter == 'consumed' %}selected{% endif %}>Zużycia</option>
+            </select>
+        </div>
+        <div class="mb-2">
+            <select name="nfc" class="form-select" style="font-size:0.95rem;">
+                <option value="all"    {% if nfc_filter == 'all' %}selected{% endif %}>NFC i ręcznie</option>
+                <option value="nfc"    {% if nfc_filter == 'nfc' %}selected{% endif %}>Tylko NFC</option>
+                <option value="manual" {% if nfc_filter == 'manual' %}selected{% endif %}>Tylko ręcznie</option>
+            </select>
+        </div>
+        <div class="mb-2">
+            <select name="firefighter_id" class="form-select" style="font-size:0.95rem;">
+                <option value="">Wszyscy strażacy</option>
+                {% for ff in firefighters %}
+                <option value="{{ ff.firefighter_id }}"
+                    {% if firefighter_filter == ff.firefighter_id|string %}selected{% endif %}>
+                    {{ ff.full_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary w-100" style="border-radius:10px;">
+            <i class="bi bi-funnel"></i> Filtruj
+        </button>
+    </form>
+</div>
+
+<!-- Wyniki -->
+{% if not logs %}
+    <div class="mobile-card text-center" style="color:#adc4e3;">
+        Brak logów dla wybranych filtrów.
+    </div>
+{% else %}
+
+<div style="color:#adc4e3; font-size:0.8rem; margin-bottom:10px; text-align:right;">
+    {{ logs|length }} wpisów
+</div>
+
+{% for log, item, firefighter, performed_by_user in logs %}
+<div class="mobile-card"
+     style="background:{% if log.action == 'issued' %}#0d3320{% elif log.action == 'consumed' %}#2a1a1a{% else %}#1a355c{% endif %};
+            border-left: 4px solid {% if log.action == 'issued' %}#28a745{% elif log.action == 'consumed' %}#6c757d{% else %}#ffc107{% endif %};
+            padding:14px; margin-bottom:10px;">
+
+    <!-- Nagłówek logu -->
+    <div class="d-flex justify-content-between align-items-center mb-1">
+        <div>
+            {% if log.action == 'issued' %}
+                <span class="badge bg-success">Wydanie</span>
+            {% elif log.action == 'consumed' %}
+                <span class="badge bg-secondary">Zużycie</span>
+            {% else %}
+                <span class="badge bg-warning text-dark">Zwrot</span>
+            {% endif %}
+
+            {% if log.nfc_scan %}
+                <span class="badge bg-primary ms-1">
+                    <i class="bi bi-upc-scan"></i> NFC
+                </span>
+            {% else %}
+                <span class="badge ms-1" style="background:#2a3a4a; color:#adc4e3;">
+                    <i class="bi bi-hand-index"></i> Ręcznie
+                </span>
+            {% endif %}
+        </div>
+        <div style="color:#adc4e3; font-size:0.78rem;">
+            {{ log.performed_at.strftime('%d.%m.%Y %H:%M') }}
+        </div>
+    </div>
+
+    <!-- Przedmiot -->
+    <div style="color:#fff; font-weight:700; font-size:1rem; margin-bottom:4px;">
+        {{ item.name }}
+    </div>
+
+    <!-- Strażak -->
+    <div style="color:#adc4e3; font-size:0.88rem;">
+        {% if firefighter %}
+            <i class="bi bi-person"></i>
+            <a href="{{ url_for('mobile_controller.mobile_firefighter', firefighter_id=firefighter.firefighter_id) }}"
+               style="color:#7eb8f7; text-decoration:none;">
+                {{ firefighter.full_name }}
+            </a>
+        {% else %}
+            <i class="bi bi-person"></i> —
+        {% endif %}
+    </div>
+
+    <!-- Wykonał -->
+    {% if performed_by_user %}
+    <div style="color:#adc4e3; font-size:0.8rem; margin-top:2px;">
+        <i class="bi bi-person-check"></i> {{ performed_by_user.full_name }}
+    </div>
+    {% endif %}
+
+</div>
+{% endfor %}
+
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Auto-submit przy zmianie filtra
+    document.querySelectorAll("select[name='action'], select[name='nfc'], select[name='firefighter_id']").forEach(function(sel) {
+        sel.addEventListener("change", function() {
+            this.closest("form").submit();
+        });
+    });
+</script>
+{% endblock %}

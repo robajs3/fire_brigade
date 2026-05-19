@@ -19,9 +19,8 @@
     {% endif %}
 </div>
 
-<!-- SIATKA 2x2 -->
+<!-- SIATKA 2x3 -->
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:0 4px;">
-
     <!-- Wydaj -->
     <a href="{{ url_for('mobile_controller.mobile_scan') }}"
        style="text-decoration:none;">
@@ -33,7 +32,6 @@
             <div class="mobile-tile-sub">Skanuj kartę NFC</div>
         </div>
     </a>
-
     <!-- Strażacy -->
     <a href="{{ url_for('mobile_controller.mobile_firefighters') }}"
        style="text-decoration:none;">
@@ -45,7 +43,6 @@
             <div class="mobile-tile-sub">Lista i wyposażenie</div>
         </div>
     </a>
-
     <!-- Powiadomienia -->
     <a href="{{ url_for('mobile_controller.mobile_notifications') }}"
        style="text-decoration:none;">
@@ -67,7 +64,28 @@
             </div>
         </div>
     </a>
-
+<!-- Magazyn -->
+    <a href="{{ url_for('mobile_controller.mobile_warehouse') }}"
+       style="text-decoration:none;">
+        <div class="mobile-tile">
+            <div class="mobile-tile-icon" style="background:#1a4a5c;">
+                <i class="bi bi-box-seam"></i>
+            </div>
+            <div class="mobile-tile-label">Magazyn</div>
+            <div class="mobile-tile-sub">Stan i przyjęcia</div>
+        </div>
+    </a>
+    <!-- Logi -->
+<a href="{{ url_for('mobile_controller.mobile_logs') }}"
+       style="text-decoration:none;">
+        <div class="mobile-tile">
+            <div class="mobile-tile-icon" style="background:#2e1a5c;">
+                <i class="bi bi-journal-text"></i>
+            </div>
+            <div class="mobile-tile-label">Logi</div>
+            <div class="mobile-tile-sub">Historia operacji</div>
+        </div>
+    </a>
     <!-- Pełny widok -->
     <a href="{{ url_for('dashboard_controller.dashboard') }}?desktop=1"
        style="text-decoration:none;">
@@ -79,7 +97,6 @@
             <div class="mobile-tile-sub">Panel zarządzania</div>
         </div>
     </a>
-
 </div>
 
 {% endblock %}

@@ -6,7 +6,7 @@ from services.catalog_service import CatalogService
 from models.item_model import RoleRequiredItem
 from models.firefighter_model import Firefighter
 
-catalog_bp = Blueprint("catalog_controller", __name__, url_prefix="/Sp")
+catalog_bp = Blueprint("catalog_controller", __name__, url_prefix="/zsr")
 
 # Role techniczne (klucze)
 ROLES = ["kierownik_gbr", "strazak", "ratownik_medyczny"]

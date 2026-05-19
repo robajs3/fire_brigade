@@ -1,0 +1,169 @@
+{% extends "mobile/base_mobile.html" %}
+{% block title %}Magazyn – Magazyn SP{% endblock %}
+{% block content %}
+
+<div class="mb-3">
+    <h5 style="color:#fff; font-weight:700; margin-bottom:2px;">
+        <i class="bi bi-box-seam me-2" style="color:#4a9fd4;"></i>Magazyn
+    </h5>
+    <div style="color:#adc4e3; font-size:0.85rem;">Stan przedmiotów w magazynie</div>
+</div>
+
+{# ── FILTRY ── #}
+<form method="GET" action="{{ url_for('mobile_controller.mobile_warehouse') }}"
+      style="margin-bottom:14px;">
+    <div style="display:flex; gap:8px; margin-bottom:8px;">
+        <input
+            type="search"
+            name="q"
+            value="{{ q }}"
+            placeholder="Szukaj przedmiotu…"
+            class="form-control form-control-sm"
+            style="background:#1e2d40; border:1px solid #2e4060; color:#fff;
+                   border-radius:10px; flex:1;"
+        >
+        <button type="submit"
+                style="background:#1a5c35; border:none; color:#fff;
+                       border-radius:10px; padding:0 14px; font-size:0.9rem;">
+            <i class="bi bi-search"></i>
+        </button>
+    </div>
+    <div style="display:flex; gap:8px;">
+        <select name="category" class="form-select form-select-sm"
+                style="background:#1e2d40; border:1px solid #2e4060; color:#fff;
+                       border-radius:10px; flex:1;" onchange="this.form.submit()">
+            <option value="all" {% if category_filter == 'all' %}selected{% endif %}>
+                Wszystkie kategorie
+            </option>
+            {% for cat in categories %}
+            <option value="{{ cat }}"
+                    {% if category_filter == cat %}selected{% endif %}>
+                {{ cat }}
+            </option>
+            {% endfor %}
+        </select>
+        <select name="stock" class="form-select form-select-sm"
+                style="background:#1e2d40; border:1px solid #2e4060; color:#fff;
+                       border-radius:10px; flex:1;" onchange="this.form.submit()">
+            <option value="all"  {% if stock_filter == 'all'  %}selected{% endif %}>Stan: wszystko</option>
+            <option value="ok"   {% if stock_filter == 'ok'   %}selected{% endif %}>Dostępne</option>
+            <option value="low"  {% if stock_filter == 'low'  %}selected{% endif %}>Niski stan</option>
+            <option value="zero" {% if stock_filter == 'zero' %}selected{% endif %}>Brak</option>
+        </select>
+    </div>
+</form>
+
+{# ── PODSUMOWANIE ── #}
+<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px;">
+    <div style="background:#1a355c; border-radius:12px; padding:10px 6px; text-align:center;">
+        <div style="color:#4a9fd4; font-size:1.3rem; font-weight:700;">{{ summary.total }}</div>
+        <div style="color:#adc4e3; font-size:0.72rem;">Pozycji</div>
+    </div>
+    <div style="background:#1a5c35; border-radius:12px; padding:10px 6px; text-align:center;">
+        <div style="color:#5cb85c; font-size:1.3rem; font-weight:700;">{{ summary.available }}</div>
+        <div style="color:#adc4e3; font-size:0.72rem;">Dostępnych</div>
+    </div>
+    <div style="background:#7a1a1a; border-radius:12px; padding:10px 6px; text-align:center;">
+        <div style="color:#e05c5c; font-size:1.3rem; font-weight:700;">{{ summary.low }}</div>
+        <div style="color:#adc4e3; font-size:0.72rem;">Niski stan</div>
+    </div>
+</div>
+
+{# ── LISTA ── #}
+{% if items %}
+<div style="display:flex; flex-direction:column; gap:10px;">
+    {% for entry in items %}
+    {% set qty_free = entry.qty_free %}
+    {% set qty_issued = entry.qty_issued %}
+    {% set qty_total = qty_free + qty_issued %}
+    {% if qty_free == 0 %}
+        {% set bar_color = '#e05c5c' %}
+        {% set badge_bg  = '#7a1a1a' %}
+        {% set badge_txt = 'Brak' %}
+    {% elif qty_free <= entry.low_stock_threshold %}
+        {% set bar_color = '#f0a500' %}
+        {% set badge_bg  = '#4a3000' %}
+        {% set badge_txt = 'Niski stan' %}
+    {% else %}
+        {% set bar_color = '#5cb85c' %}
+        {% set badge_bg  = '#1a5c35' %}
+        {% set badge_txt = 'Dostępne' %}
+    {% endif %}
+
+    <div style="background:#1a2535; border-radius:14px; padding:13px 14px;
+                border-left:4px solid {{ bar_color }};">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div style="flex:1; min-width:0;">
+                <div style="color:#fff; font-weight:600; font-size:0.95rem;
+                            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    {{ entry.catalog_item.name }}
+                </div>
+                {% if entry.catalog_item.category %}
+                <div style="color:#7a9bbf; font-size:0.78rem; margin-top:1px;">
+                    {{ entry.catalog_item.category }}
+                </div>
+                {% endif %}
+            </div>
+            <span style="background:{{ badge_bg }}; color:{{ bar_color }};
+                         border-radius:8px; padding:3px 10px; font-size:0.75rem;
+                         font-weight:600; white-space:nowrap; margin-left:8px;">
+                {{ badge_txt }}
+            </span>
+        </div>
+
+        {# Pasek progresu #}
+        {% if qty_total > 0 %}
+        <div style="background:#0d1a26; border-radius:6px; height:5px;
+                    margin:10px 0 8px 0; overflow:hidden;">
+            <div style="background:{{ bar_color }}; height:100%;
+                        width:{{ ((qty_free / qty_total) * 100)|int }}%;
+                        border-radius:6px; transition:width .3s;"></div>
+        </div>
+        {% endif %}
+
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; gap:14px;">
+                <span style="color:#adc4e3; font-size:0.8rem;">
+                    <i class="bi bi-box2" style="color:#4a9fd4;"></i>
+                    <strong style="color:#fff;">{{ qty_free }}</strong> wolnych
+                </span>
+                <span style="color:#adc4e3; font-size:0.8rem;">
+                    <i class="bi bi-person-check" style="color:#9b7fd4;"></i>
+                    <strong style="color:#fff;">{{ qty_issued }}</strong> wydanych
+                </span>
+            </div>
+            {% if current_user_role in ['manager', 'admin'] %}
+            <a href="{{ url_for('mobile_controller.mobile_warehouse_receive_form',
+                                catalog_id=entry.catalog_item.catalog_id) }}"
+               style="background:#11284d; border:1px solid #2e4060; color:#4a9fd4;
+                      border-radius:9px; padding:4px 12px; font-size:0.8rem;
+                      text-decoration:none;">
+                <i class="bi bi-plus-lg"></i> Przyjmij
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div style="text-align:center; color:#adc4e3; padding:40px 0;">
+    <i class="bi bi-inbox" style="font-size:2.5rem; display:block; margin-bottom:10px;
+       color:#2e4060;"></i>
+    Brak przedmiotów spełniających kryteria.
+</div>
+{% endif %}
+
+{# ── FAB: Przyjmij (tylko manager/admin) ── #}
+{% if current_user_role in ['manager', 'admin'] %}
+<a href="{{ url_for('mobile_controller.mobile_warehouse_receive_form') }}"
+   style="position:fixed; bottom:24px; right:20px; z-index:200;
+          background:#1a5c35; color:#fff; border-radius:50px;
+          padding:13px 20px; font-size:0.95rem; font-weight:600;
+          text-decoration:none; box-shadow:0 4px 18px rgba(0,0,0,.5);
+          display:flex; align-items:center; gap:8px;">
+    <i class="bi bi-plus-lg"></i> Przyjmij do magazynu
+</a>
+<div style="height:70px;"></div>
+{% endif %}
+
+{% endblock %}

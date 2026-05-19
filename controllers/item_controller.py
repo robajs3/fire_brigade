@@ -11,7 +11,7 @@ from models.user_model import db
 from models.item_model import Item, IssuanceLog
 from models.firefighter_model import Firefighter
 
-item_bp = Blueprint("item_controller", __name__, url_prefix="/Sp")
+item_bp = Blueprint("item_controller", __name__, url_prefix="/zsr")
 
 
 def role_required(required_roles=None):
@@ -151,13 +151,50 @@ def add_item_post():
 @item_bp.route("/items/<int:id>")
 @role_required()
 def item_detail(id):
+    from models.item_model import ItemCatalog
+
     item = ItemService.get_by_id(id)
     if not item:
         flash("Nie znaleziono przedmiotu.", "danger")
         return redirect(url_for("item_controller.items_list"))
-    logs = ItemService.get_item_log(id)
-    userCAS = session.get("CAS_USERNAME")
-    return render_template("items/detail.html", item=item, logs=logs, userCAS=userCAS)
+
+    all_instances    = []
+    issued_instances = []
+    stock_instances  = []
+    catalog_entry    = None
+    sap_stock        = None
+
+    if item.catalog_id:
+        catalog_entry = ItemCatalog.query.get(item.catalog_id)
+        sap_stock     = float(catalog_entry.sap_stock or 0) if catalog_entry else None
+
+        all_instances = Item.query.filter_by(
+            catalog_id=item.catalog_id,
+            is_consumed=False
+        ).all()
+
+        issued_instances = [i for i in all_instances if i.firefighter_id]
+        stock_instances  = [i for i in all_instances if not i.firefighter_id]
+    else:
+        all_instances    = [item]
+        issued_instances = [item] if item.firefighter_id else []
+        stock_instances  = [item] if not item.firefighter_id else []
+
+    logs         = ItemService.get_item_log(id)
+    firefighters = FirefighterService.get_all_active()
+
+    return render_template(
+        "items/detail.html",
+        item=item,
+        catalog_entry=catalog_entry,
+        all_instances=all_instances,
+        issued_instances=issued_instances,
+        stock_instances=stock_instances,
+        sap_stock=sap_stock,
+        logs=logs,
+        firefighters=firefighters,
+        today=date.today().isoformat()
+    )
 
 
 @item_bp.route("/items/<int:id>/edit", methods=["GET"])
@@ -225,10 +262,41 @@ def issue_item_post(id):
     clothing       = request.form.get("clothing_card_number")
     notes          = request.form.get("notes")
     nfc_scan       = request.form.get("nfc_scan") == "true"
+    force_db       = request.form.get("force_db") == "true"
 
     if not firefighter_id or not issue_date:
         flash("Wybierz strażaka i datę wydania.", "danger")
         return redirect(url_for("item_controller.issue_item_form", id=id))
+
+    # Jeśli force_db – pomiń sprawdzanie SAP
+    if force_db:
+        item = ItemService.get_by_id(id)
+        if not item or item.is_consumed:
+            flash("Przedmiot niedostępny.", "danger")
+            return redirect(url_for("item_controller.item_detail", id=id))
+        from models.item_model import IssuanceLog as IL
+        try:
+            item.firefighter_id = int(firefighter_id)
+            item.issue_date     = issue_date
+            if clothing:
+                item.clothing_card_number = clothing
+            if notes:
+                item.notes = notes
+            log = IL(
+                item_id=id,
+                firefighter_id=int(firefighter_id),
+                action="issued",
+                performed_by=UserService.get_user_by_cas_username(session["CAS_USERNAME"]).user_id,
+                nfc_scan=nfc_scan,
+                notes=notes
+            )
+            db.session.add(log)
+            db.session.commit()
+            flash("Przedmiot został wydany (pominięto SAP).", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash("Błąd podczas wydania.", "danger")
+        return redirect(url_for("item_controller.item_detail", id=id))
 
     item = ItemService.issue_item(
         item_id=id,
@@ -252,6 +320,7 @@ def issue_item_post(id):
 def return_item(id):
     item = ItemService.get_by_id(id)
     firefighter_id = item.firefighter_id if item else None
+    next_url = request.form.get("next")
 
     result = ItemService.return_item(
         item_id=id,
@@ -264,6 +333,8 @@ def return_item(id):
     else:
         flash("Błąd podczas zwrotu.", "danger")
 
+    if next_url:
+        return redirect(next_url)
     if firefighter_id:
         return redirect(url_for("firefighter_controller.firefighter_detail", id=firefighter_id))
     return redirect(url_for("item_controller.items_list"))
@@ -301,3 +372,61 @@ def delete_item(id):
     else:
         flash("Błąd podczas usuwania przedmiotu.", "danger")
     return redirect(next_url)
+
+
+@item_bp.route("/items/issue-from-catalog", methods=["POST"])
+@role_required(["manager", "admin"])
+def issue_from_catalog():
+    from services.catalog_service import CatalogService
+    from datetime import date as dt
+    catalog_id     = request.form.get("catalog_id")
+    firefighter_id = request.form.get("firefighter_id")
+    issue_date     = request.form.get("issue_date") or dt.today().isoformat()
+    clothing       = request.form.get("clothing_card_number") or None
+    notes          = request.form.get("notes") or None
+    redirect_item  = request.form.get("redirect_item_id")
+
+    if not catalog_id or not firefighter_id:
+        flash("Wybierz strażaka.", "danger")
+        return redirect(request.referrer or url_for("item_controller.items_list"))
+
+    catalog_entry = CatalogService.get_by_id(int(catalog_id))
+    if not catalog_entry:
+        flash("Nie znaleziono pozycji w katalogu.", "danger")
+        return redirect(request.referrer or url_for("item_controller.items_list"))
+
+    available, stock = ItemService.check_sap_stock(int(catalog_id))
+    if not available:
+        flash(f"Brak stanu w SAP (stan: {stock}). Nie można wydać.", "danger")
+        return redirect(request.referrer or url_for("item_controller.items_list"))
+
+    user = UserService.get_user_by_cas_username(session["CAS_USERNAME"])
+
+    item = Item.query.filter_by(
+        catalog_id=int(catalog_id),
+        is_consumed=False,
+        firefighter_id=None
+    ).first()
+
+    if not item:
+        flash("Brak egzemplarzy w magazynie.", "danger")
+        return redirect(request.referrer or url_for("item_controller.items_list"))
+
+    item = ItemService.issue_item(
+        item_id=item.item_id,
+        firefighter_id=int(firefighter_id),
+        issue_date=issue_date,
+        performed_by_user_id=user.user_id,
+        clothing_card_number=clothing,
+        notes=notes,
+        nfc_scan=False
+    )
+
+    if item:
+        flash("Wydano przedmiot.", "success")
+    else:
+        flash("Błąd podczas wydania.", "danger")
+
+    if redirect_item:
+        return redirect(url_for("item_controller.item_detail", id=redirect_item))
+    return redirect(request.referrer or url_for("item_controller.items_list"))

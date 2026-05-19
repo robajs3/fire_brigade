@@ -5,7 +5,7 @@ from models.user_model import db, User
 from models.item_model import IssuanceLog, Item
 from models.firefighter_model import Firefighter
 
-log_bp = Blueprint("log_controller", __name__, url_prefix="/Sp")
+log_bp = Blueprint("log_controller", __name__, url_prefix="/zsr")
 
 
 def role_required(required_roles=None):

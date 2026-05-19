@@ -8,7 +8,7 @@ from services.firefighter_service import FirefighterService
 from services.catalog_service import CatalogService
 from models.item_model import RoleRequiredItem, Item
 
-mobile_bp = Blueprint("mobile_controller", __name__, url_prefix="/Sp/mobile")
+mobile_bp = Blueprint("mobile_controller", __name__, url_prefix="/zsr/mobile")
 
 
 def role_required(required_roles=None):
@@ -39,9 +39,6 @@ def mobile_dashboard():
                            notifications_danger=counts["danger"])
 
 
-# ---------------------------------------------------------
-# SCAN — jedyne miejsce gdzie resetujemy last_nfc_scan
-# ---------------------------------------------------------
 @mobile_bp.route("/scan")
 @role_required()
 def mobile_scan():
@@ -50,21 +47,12 @@ def mobile_scan():
     return render_template("mobile/scan.html", firefighters=firefighters)
 
 
-# ---------------------------------------------------------
-# LISTA STRAŻAKÓW (mobilna)
-# ---------------------------------------------------------
-
 @mobile_bp.route("/firefighters")
 @role_required()
 def mobile_firefighters():
-    from services.notification_service import NotificationService
     firefighters = FirefighterService.get_all_active()
     return render_template("mobile/firefighters.html", firefighters=firefighters)
 
-
-# ---------------------------------------------------------
-# POWIADOMIENIA (mobilne)
-# ---------------------------------------------------------
 
 @mobile_bp.route("/notifications")
 @role_required()
@@ -75,11 +63,67 @@ def mobile_notifications():
     return render_template("mobile/notifications.html",
                            notifications=notifications,
                            counts=counts)
-    
-    
-# ---------------------------------------------------------
-# FIREFIGHTER — korzysta tylko z sesji, bez request.args
-# ---------------------------------------------------------
+
+
+@mobile_bp.route("/logs")
+@role_required(["manager", "admin"])
+def mobile_logs():
+    from models.user_model import db, User
+    from models.item_model import IssuanceLog, Item as ItemModel
+    from models.firefighter_model import Firefighter
+
+    action_filter      = request.args.get("action", "all")
+    nfc_filter         = request.args.get("nfc", "all")
+    firefighter_filter = request.args.get("firefighter_id", "")
+
+    query = (
+        db.session.query(IssuanceLog, ItemModel, User)
+        .join(ItemModel, IssuanceLog.item_id == ItemModel.item_id)
+        .outerjoin(User, IssuanceLog.performed_by == User.user_id)
+    )
+
+    if action_filter != "all":
+        query = query.filter(IssuanceLog.action == action_filter)
+    if nfc_filter == "nfc":
+        query = query.filter(IssuanceLog.nfc_scan == True)
+    elif nfc_filter == "manual":
+        query = query.filter(IssuanceLog.nfc_scan == False)
+    if firefighter_filter:
+        query = query.filter(IssuanceLog.firefighter_id == int(firefighter_filter))
+
+    raw_logs = query.order_by(IssuanceLog.performed_at.desc()).limit(200).all()
+
+    logs = []
+    for log, item, performed_by_user in raw_logs:
+        firefighter = None
+        if log.firefighter_id:
+            firefighter = Firefighter.query.get(log.firefighter_id)
+        else:
+            issued_log = (
+                IssuanceLog.query
+                .filter_by(item_id=log.item_id, action="issued")
+                .filter(IssuanceLog.performed_at <= log.performed_at)
+                .filter(IssuanceLog.firefighter_id.isnot(None))
+                .order_by(IssuanceLog.performed_at.desc())
+                .first()
+            )
+            if issued_log:
+                firefighter = Firefighter.query.get(issued_log.firefighter_id)
+
+        logs.append((log, item, firefighter, performed_by_user))
+
+    firefighters = FirefighterService.get_all_active()
+
+    return render_template(
+        "mobile/logs.html",
+        logs=logs,
+        firefighters=firefighters,
+        action_filter=action_filter,
+        nfc_filter=nfc_filter,
+        firefighter_filter=firefighter_filter,
+    )
+
+
 @mobile_bp.route("/firefighter/<int:firefighter_id>")
 @role_required()
 def mobile_firefighter(firefighter_id):
@@ -88,9 +132,7 @@ def mobile_firefighter(firefighter_id):
         flash("Nie znaleziono strażaka.", "danger")
         return redirect(url_for("mobile_controller.mobile_scan"))
 
-    # Informacja czy wejście nastąpiło po skanie NFC
-    nfc_scan = session.get("last_nfc_scan", False)
-
+    nfc_scan     = session.get("last_nfc_scan", False)
     issued_items = FirefighterService.get_issued_items(firefighter_id)
 
     required_items = RoleRequiredItem.query.filter_by(
@@ -111,7 +153,7 @@ def mobile_firefighter(firefighter_id):
             "has_it":     req.catalog_id in issued_catalog_ids,
         })
 
-    catalog = CatalogService.get_all_active()
+    catalog       = CatalogService.get_all_active()
     missing_count = sum(1 for e in equipment_status if not e["has_it"])
 
     return render_template(
@@ -126,9 +168,6 @@ def mobile_firefighter(firefighter_id):
     )
 
 
-# ---------------------------------------------------------
-# CONFIRM — korzysta z sesji
-# ---------------------------------------------------------
 @mobile_bp.route("/confirm", methods=["POST"])
 @role_required()
 def mobile_confirm():
@@ -156,9 +195,6 @@ def mobile_confirm():
     )
 
 
-# ---------------------------------------------------------
-# ISSUE — po wydaniu resetujemy last_nfc_scan (pop)
-# ---------------------------------------------------------
 @mobile_bp.route("/issue", methods=["POST"])
 @role_required(["manager", "admin"])
 def mobile_issue():
@@ -177,7 +213,6 @@ def mobile_issue():
         flash("Nie znaleziono strażaka lub przedmiotu.", "danger")
         return redirect(url_for("mobile_controller.mobile_scan"))
 
-    # Pobierz istniejący przedmiot z magazynu
     item = Item.query.filter_by(
         catalog_id=catalog_id,
         is_consumed=False,
@@ -211,9 +246,7 @@ def mobile_issue():
         return redirect(url_for("mobile_controller.mobile_firefighter",
                                 firefighter_id=firefighter_id))
 
-# ---------------------------------------------------------
-# API — jedyne miejsce gdzie ustawiamy last_nfc_scan
-# ---------------------------------------------------------
+
 @mobile_bp.route("/api/firefighter-by-nfc/<nfc_hash>")
 @role_required()
 def api_firefighter_by_nfc(nfc_hash):
@@ -221,7 +254,6 @@ def api_firefighter_by_nfc(nfc_hash):
     if not ff:
         return jsonify({"error": "Nie znaleziono"}), 404
 
-    # Ustawiamy flagę NFC TYLKO tutaj
     session["last_nfc_scan"] = True
     session.modified = True
 
@@ -230,3 +262,157 @@ def api_firefighter_by_nfc(nfc_hash):
         "full_name": ff.full_name,
         "role":      ff.role_label
     })
+    
+# ─────────────────────────────────────────────
+#  MAGAZYN MOBILNY  –  dodaj do mobile_controller.py
+# ─────────────────────────────────────────────
+
+from collections import defaultdict
+
+
+def _warehouse_summary(entries):
+    """Zwraca słownik z liczbami do kafelków podsumowania."""
+    total     = len(entries)
+    available = sum(1 for e in entries if e.qty_free > 0
+                    and e.qty_free > e.low_stock_threshold)
+    low       = sum(1 for e in entries if 0 < e.qty_free <= e.low_stock_threshold)
+    return {"total": total, "available": available, "low": low}
+
+
+@mobile_bp.route("/warehouse")
+@role_required()
+def mobile_warehouse():
+    from models.item_model import Item
+
+    q               = request.args.get("q", "").strip()
+    category_filter = request.args.get("category", "all")
+    stock_filter    = request.args.get("stock", "all")
+
+    # Pobierz aktywne pozycje katalogu
+    catalog_items = CatalogService.get_all_active()
+
+    # Pobierz surowe przedmioty (nie skonsumowane)
+    items_query = Item.query.filter_by(is_consumed=False)
+    all_items   = items_query.all()
+
+    # Zgrupuj po catalog_id
+    free_counts   = defaultdict(int)
+    issued_counts = defaultdict(int)
+    for it in all_items:
+        if it.catalog_id:
+            if it.firefighter_id is None:
+                free_counts[it.catalog_id]   += 1
+            else:
+                issued_counts[it.catalog_id] += 1
+
+    # Zbuduj listę wpisów widoku
+    LOW_STOCK_DEFAULT = 2   # jeśli CatalogItem nie ma własnego progu
+
+    class WarehouseEntry:
+        def __init__(self, catalog_item):
+            self.catalog_item      = catalog_item
+            self.qty_free          = free_counts.get(catalog_item.catalog_id, 0)
+            self.qty_issued        = issued_counts.get(catalog_item.catalog_id, 0)
+            self.low_stock_threshold = getattr(
+                catalog_item, "low_stock_threshold", LOW_STOCK_DEFAULT
+            )
+
+    entries = [WarehouseEntry(c) for c in catalog_items]
+
+    # Filtr tekstowy
+    if q:
+        entries = [e for e in entries
+                   if q.lower() in e.catalog_item.name.lower()]
+
+    # Filtr kategorii
+    categories = sorted({
+        e.catalog_item.category
+        for e in entries
+        if getattr(e.catalog_item, "category", None)
+    })
+    if category_filter != "all":
+        entries = [e for e in entries
+                   if getattr(e.catalog_item, "category", None) == category_filter]
+
+    # Filtr stanu
+    if stock_filter == "ok":
+        entries = [e for e in entries
+                   if e.qty_free > e.low_stock_threshold]
+    elif stock_filter == "low":
+        entries = [e for e in entries
+                   if 0 < e.qty_free <= e.low_stock_threshold]
+    elif stock_filter == "zero":
+        entries = [e for e in entries if e.qty_free == 0]
+
+    summary = _warehouse_summary(entries)
+
+    # Rola zalogowanego użytkownika (do szablonu)
+    user = UserService.get_user_by_cas_username(session["CAS_USERNAME"])
+
+    return render_template(
+        "mobile/warehouse.html",
+        items=entries,
+        categories=categories,
+        q=q,
+        category_filter=category_filter,
+        stock_filter=stock_filter,
+        summary=summary,
+        current_user_role=user.role,
+    )
+
+
+@mobile_bp.route("/warehouse/receive", methods=["GET"])
+@role_required(["manager", "admin"])
+def mobile_warehouse_receive_form():
+    catalog              = CatalogService.get_all_active()
+    preselected_catalog_id = request.args.get("catalog_id", type=int)
+    return render_template(
+        "mobile/warehouse_receive.html",
+        catalog=catalog,
+        preselected_catalog_id=preselected_catalog_id,
+        today=date.today().isoformat(),
+    )
+
+
+@mobile_bp.route("/warehouse/receive", methods=["POST"])
+@role_required(["manager", "admin"])
+def mobile_warehouse_receive():
+    catalog_id      = request.form.get("catalog_id", type=int)
+    quantity        = request.form.get("quantity", type=int)
+    receive_date    = request.form.get("receive_date")
+    document_number = request.form.get("document_number", "").strip() or None
+    notes           = request.form.get("notes", "").strip() or None
+
+    if not catalog_id or not quantity or quantity < 1:
+        flash("Podaj przedmiot i ilość.", "danger")
+        return redirect(url_for("mobile_controller.mobile_warehouse_receive_form"))
+
+    catalog_entry = CatalogService.get_by_id(catalog_id)
+    if not catalog_entry:
+        flash("Nie znaleziono przedmiotu w katalogu.", "danger")
+        return redirect(url_for("mobile_controller.mobile_warehouse_receive_form"))
+
+    user = UserService.get_user_by_cas_username(session["CAS_USERNAME"])
+
+    # Utwórz `quantity` nowych rekordów Item
+    success = ItemService.receive_items(
+        catalog_id=catalog_id,
+        quantity=quantity,
+        receive_date=receive_date,
+        performed_by_user_id=user.user_id,
+        document_number=document_number,
+        notes=notes,
+    )
+
+    if not success:
+        flash("Błąd podczas przyjęcia przedmiotów.", "danger")
+        return redirect(url_for("mobile_controller.mobile_warehouse_receive_form"))
+
+    return render_template(
+        "mobile/warehouse_success.html",
+        catalog_entry=catalog_entry,
+        quantity=quantity,
+        receive_date=receive_date,
+        document_number=document_number,
+        notes=notes,
+    )

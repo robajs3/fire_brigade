@@ -3,7 +3,6 @@
 
 {% block content %}
 <h3 class="mb-3" style="color:#fff;">Zidentyfikuj strażaka</h3>
-<p style="color:red; font-size:1.2rem;">Strażaków: {{ firefighters|length }}</p>
 
 <div class="mobile-card" style="background:#11284d;">
 
@@ -68,6 +67,7 @@
                 <input type="text" id="search-ff"
                        class="form-control mb-3"
                        placeholder="Szukaj po nazwisku..."
+                       autocomplete="off"
                        style="background:#1a355c; color:#fff; border:1px solid #234a7a;
                               padding:12px; border-radius:10px; font-size:1rem;">
                 <div id="ff-list" style="max-height:60vh; overflow-y:auto;">
@@ -90,26 +90,35 @@
 <script src="{{ url_for('static', filename='js/nfc.js') }}"></script>
 <script>
     var nfcReader = null;
+    var ffRows = null;
 
-    // ── Wyszukiwarka strażaków ──
+    // Wyszukiwarka – pętla for zamiast forEach
     document.getElementById("search-ff").addEventListener("input", function() {
+        if (!ffRows) return;
         var q = this.value.toLowerCase().trim();
-        document.querySelectorAll("#ff-list .item-touch-row").forEach(function(row) {
-            var name = (row.getAttribute("data-name") || "").toLowerCase();
-            row.style.display = name.includes(q) ? "" : "none";
-        });
+        for (var i = 0; i < ffRows.length; i++) {
+            var name = ffRows[i].getAttribute("data-name") || "";
+            ffRows[i].style.display = name.includes(q) ? "" : "none";
+        }
     });
 
+    // Modal – pobierz wiersze dopiero po otwarciu, nie wywołuj focus()
     document.getElementById("manualModal").addEventListener("shown.bs.modal", function() {
+        ffRows = document.querySelectorAll("#ff-list .item-touch-row");
         document.getElementById("search-ff").value = "";
-        document.getElementById("search-ff").focus();
-        // Pokaż wszystkie wiersze gdy modal się otwiera
-        document.querySelectorAll("#ff-list .item-touch-row").forEach(function(row) {
-            row.style.display = "";
-        });
+        for (var i = 0; i < ffRows.length; i++) {
+            ffRows[i].style.display = "";
+        }
     });
 
-    // ── NFC ──
+    // Zatrzymaj NFC gdy modal otwarty, wznów gdy zamknięty
+    document.getElementById("manualModal").addEventListener("show.bs.modal", function() {
+        if (nfcReader) nfcReader.stopListening();
+    });
+    document.getElementById("manualModal").addEventListener("hidden.bs.modal", function() {
+        startNFC();
+    });
+
     function startNFC() {
         nfcReader = new NFCReader("nfc-input", function(data) {
             fetch("/Sp/mobile/api/firefighter-by-nfc/" + encodeURIComponent(data.hash))
@@ -122,7 +131,7 @@
                         document.getElementById("nfc-error").style.display = "none";
                         document.getElementById("nfc-timeout-info").style.display = "none";
                         document.getElementById("nfc-waiting").style.display = "none";
-                        document.getElementById("go-link").href = "/Sp/mobile/firefighter/" + json.id;
+                        document.getElementById("go-link").href = "/Sp/mobile/firefighter/" + json.id + "?nfc=1";
                         document.getElementById("go-btn").style.display = "block";
                     } else {
                         document.getElementById("nfc-error").style.display = "block";

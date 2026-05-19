@@ -9,7 +9,7 @@ from services.item_service import ItemService
 from models.firefighter_model import Firefighter
 from models.item_model import RoleRequiredItem, Item
 
-firefighter_bp = Blueprint("firefighter_controller", __name__, url_prefix="/Sp")
+firefighter_bp = Blueprint("firefighter_controller", __name__, url_prefix="/zsr")
 
 
 def role_required(required_roles=None):

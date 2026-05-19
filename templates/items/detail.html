@@ -1,194 +1,306 @@
 {% extends "base.html" %}
-{% block title %}Przedmiot: {{ item.name }}{% endblock %}
-
+{% block title %}{{ item.name }}{% endblock %}
 {% block content %}
 <div class="container">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>
-            Przedmiot: {{ item.name }}
-            {% if item.status_label == 'W magazynie' %}
-                <span class="badge bg-success">{{ item.status_label }}</span>
-            {% elif item.status_label == 'Wydany' %}
-                <span class="badge bg-info">{{ item.status_label }}</span>
-            {% else %}
-                <span class="badge bg-secondary">{{ item.status_label }}</span>
-            {% endif %}
-        </h2>
+    <!-- Nagłówek -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h2 class="mb-1">{{ item.name }}</h2>
+            <div class="d-flex gap-2 flex-wrap">
+                <span class="badge bg-secondary">{{ item.unit_of_measure }}</span>
+                {% if catalog_entry and catalog_entry.sap_matnr %}
+                <span class="badge bg-dark">SAP: {{ catalog_entry.sap_matnr }}</span>
+                {% endif %}
+                {% if item.usage_period_months %}
+                <span class="badge bg-info">{{ item.usage_period_months }} mies.</span>
+                {% else %}
+                <span class="badge bg-secondary">Do zużycia</span>
+                {% endif %}
+            </div>
+        </div>
+        {% if user and user.role in ['admin', 'manager'] %}
+        <a href="{{ url_for('item_controller.edit_item_form', id=item.item_id) }}"
+           class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-pencil"></i> Edytuj
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Statystyki -->
+    <div class="row mb-4">
+        <div class="col-4">
+            <div class="card text-center border-0"
+                 style="background:linear-gradient(135deg,#0a1a33,#11284d); color:#fff;">
+                <div class="card-body py-3">
+                    <div style="font-size:2rem; font-weight:700;">{{ issued_instances|length }}</div>
+                    <div style="font-size:0.82rem; opacity:0.75;">Wydanych</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="card text-center border-0"
+                 style="background:linear-gradient(135deg,#198754,#146c43); color:#fff;">
+                <div class="card-body py-3">
+                    <div style="font-size:2rem; font-weight:700;">
+                        {% if sap_stock is not none %}
+                            {{ sap_stock | int }}
+                        {% else %}
+                            {{ stock_instances|length }}
+                        {% endif %}
+                    </div>
+                    <div style="font-size:0.82rem; opacity:0.75;">
+                        {% if sap_stock is not none %}Stan SAP{% else %}W magazynie{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="card text-center border-0"
+                 style="background:linear-gradient(135deg,#6c757d,#495057); color:#fff;">
+                <div class="card-body py-3">
+                    <div style="font-size:2rem; font-weight:700;">{{ all_instances|length }}</div>
+                    <div style="font-size:0.82rem; opacity:0.75;">Łącznie (DB)</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="row">
+        <!-- LEWA: egzemplarze -->
+        <div class="col-md-7">
 
-        <div class="col-md-5">
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">Dane przedmiotu</div>
-                <div class="card-body">
-                    <table class="table table-sm">
-                        <tbody>
-                            <tr><th>Nazwa</th><td>{{ item.name }}</td></tr>
-                            <tr><th>Jednostka miary</th><td>{{ item.unit_of_measure }}</td></tr>
-                            <tr>
-                                <th>Okres używania</th>
-                                <td>
-                                    {% if item.usage_period_months %}
-                                        {{ item.usage_period_months }} mies.
-                                    {% else %}
-                                        <span class="badge bg-secondary">Do zużycia</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr><th>Nr karty odzieżowej</th><td>{{ item.clothing_card_number or "—" }}</td></tr>
-                            <tr><th>Uwagi</th><td>{{ item.notes or "—" }}</td></tr>
-                            <tr><th>Data dodania</th><td>{{ item.created_at.strftime('%d.%m.%Y') }}</td></tr>
-                        </tbody>
-                    </table>
+            <!-- Egzemplarze w magazynie -->
+            {% if stock_instances %}
+            <h5 class="mb-3">
+                <i class="bi bi-box-seam"></i> W magazynie
+                <span class="badge bg-success ms-1">{{ stock_instances|length }}</span>
+            </h5>
+            {% for inst in stock_instances %}
+            <div class="card mb-2 border-0 shadow-sm">
+                <div class="card-body py-2 d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-muted">ID: {{ inst.item_id }}</small>
+                        {% if inst.notes %}
+                        <small class="text-muted d-block">{{ inst.notes }}</small>
+                        {% endif %}
+                    </div>
+                    {% if user and user.role in ['admin', 'manager'] %}
+                    <button class="btn btn-sm btn-success"
+                            onclick="openIssueModal({{ inst.item_id }}, false)">
+                        <i class="bi bi-box-arrow-right"></i> Wydaj
+                    </button>
+                    {% endif %}
                 </div>
             </div>
+            {% endfor %}
+            {% endif %}
 
-            {% if item.is_issued %}
-            <div class="card border-primary mb-4">
-                <div class="card-header bg-primary text-white">Wydanie</div>
-                <div class="card-body">
-                    <table class="table table-sm">
-                        <tbody>
-                            <tr>
-                                <th>Strażak</th>
-                                <td>
-                                    <a href="{{ url_for('firefighter_controller.firefighter_detail', id=item.firefighter.firefighter_id) }}">
-                                        {{ item.firefighter.full_name }}
-                                    </a>
-                                </td>
-                            </tr>
-                            <tr><th>Data wydania</th><td>{{ item.issue_date.strftime('%d.%m.%Y') }}</td></tr>
-                            <tr>
-                                <th>Wygasa</th>
-                                <td>
-                                    {% if item.expiry_date %}
-                                        {{ item.expiry_date.strftime('%d.%m.%Y') }}
-                                    {% else %}
-                                        Bezterminowo
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>Pozostało dni</th>
-                                <td>
-                                    {% if item.days_until_expiry is none %}
-                                        <span class="badge bg-secondary">—</span>
-                                    {% elif item.days_until_expiry <= 0 %}
-                                        <span class="badge bg-danger">{{ item.days_until_expiry }}</span>
-                                    {% elif item.days_until_expiry <= 14 %}
-                                        <span class="badge bg-warning text-dark">{{ item.days_until_expiry }}</span>
-                                    {% else %}
-                                        <span class="badge bg-success">{{ item.days_until_expiry }}</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+            <!-- Brak w magazynie ale jest SAP – opcja wydania z pominięciem SAP -->
+            {% if not stock_instances and sap_stock is not none and sap_stock <= 0 %}
+            <div class="alert alert-danger mb-3">
+                <i class="bi bi-x-circle"></i> Brak stanu w SAP i w magazynie – nie można wydać.
             </div>
             {% endif %}
-        </div>
 
-        <div class="col-md-7">
-            <div class="card mb-4">
-                <div class="card-header bg-dark text-white">Akcje</div>
+            <!-- Egzemplarze wydane strażakom -->
+            {% if issued_instances %}
+            <h5 class="mt-4 mb-3">
+                <i class="bi bi-people"></i> Wydane egzemplarze
+                <span class="badge bg-primary ms-1">{{ issued_instances|length }}</span>
+            </h5>
+            {% for inst in issued_instances %}
+            <div class="card mb-3 border-0 shadow-sm">
                 <div class="card-body">
-
-                    {% if not item.is_consumed %}
-
-                        <a href="{{ url_for('item_controller.edit_item_form', id=item.item_id) }}"
-                           class="btn btn-outline-secondary mb-3">
-                            ✏️ Edytuj
-                        </a>
-                        <br>
-
-                        {% if item.is_in_stock %}
-                            <a href="{{ url_for('item_controller.issue_item_form', id=item.item_id) }}"
-                               class="btn btn-success btn-lg mb-3">
-                                📦 Wydaj strażakowi
-                            </a>
-                            <br>
-                        {% endif %}
-
-                        {% if item.is_issued %}
-                            <form method="POST"
-                                  action="{{ url_for('item_controller.consume_item', id=item.item_id) }}"
-                                  class="d-inline"
-                                  onsubmit="return confirm('Czy na pewno oznaczyć przedmiot jako zużyty? Tej operacji nie można cofnąć.');">
-                                <button class="btn btn-danger mb-3">🗑️ Oznacz jako zużyty</button>
-                            </form>
-                        {% endif %}
-
-                    {% else %}
-                        <div class="alert alert-secondary mb-3">
-                            Przedmiot zużyty – aby go usunąć przejdź do zakładki Zużyte.
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="fw-bold">
+                                <i class="bi bi-person-circle text-primary me-1"></i>
+                                {% if inst.firefighter %}
+                                <a href="{{ url_for('firefighter_controller.firefighter_detail', id=inst.firefighter_id) }}">
+                                    {{ inst.firefighter.full_name }}
+                                </a>
+                                {% else %}—{% endif %}
+                            </div>
+                            <small class="text-muted">
+                                Wydano: {{ inst.issue_date.strftime('%d.%m.%Y') if inst.issue_date else '—' }}
+                                {% if inst.expiry_date %}
+                                · Wygasa:
+                                    {% if inst.days_until_expiry <= 0 %}
+                                        <span class="text-danger fw-bold">{{ inst.expiry_date.strftime('%d.%m.%Y') }} (przeterminowany)</span>
+                                    {% elif inst.days_until_expiry <= 14 %}
+                                        <span class="text-warning fw-bold">{{ inst.expiry_date.strftime('%d.%m.%Y') }} ({{ inst.days_until_expiry }} dni)</span>
+                                    {% else %}
+                                        {{ inst.expiry_date.strftime('%d.%m.%Y') }}
+                                    {% endif %}
+                                {% endif %}
+                            </small>
+                            {% if inst.clothing_card_number %}
+                            <small class="text-muted d-block">Nr karty odzież.: {{ inst.clothing_card_number }}</small>
+                            {% endif %}
+                            {% if inst.notes %}
+                            <small class="text-muted d-block">{{ inst.notes }}</small>
+                            {% endif %}
                         </div>
-                    {% endif %}
-                        {% if item.is_issued %}
-<form method="POST"
-      action="{{ url_for('item_controller.return_item', id=item.item_id) }}"
-      style="display:inline"
-      onsubmit="return confirm('Zwrócić przedmiot do magazynu? Operacja zostanie zaksięgowana w SAP.')">
-    <button type="submit" class="btn btn-warning btn-touch w-100 mb-2">
-        <i class="bi bi-arrow-return-left"></i> Zwróć do magazynu
+                        {% if user and user.role in ['admin', 'manager'] %}
+                        <div class="d-flex flex-column gap-1">
+                            <form method="POST"
+      action="{{ url_for('item_controller.return_item', id=inst.item_id) }}"
+      onsubmit="return confirm('Zwrócić od {{ inst.firefighter.full_name if inst.firefighter else '' }}?')">
+    <input type="hidden" name="next" value="{{ url_for('item_controller.item_detail', id=item.item_id) }}">
+    <button type="submit" class="btn btn-sm btn-warning">
+        <i class="bi bi-arrow-return-left"></i> Zwróć
     </button>
 </form>
-{% endif %}
+                            <form method="POST"
+                                  action="{{ url_for('item_controller.consume_item', id=inst.item_id) }}"
+                                  onsubmit="return confirm('Oznaczyć jako zużyty?')">
+                                <button type="submit" class="btn btn-sm btn-danger">
+                                    <i class="bi bi-trash"></i> Zużyj
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
+            {% endfor %}
+            {% else %}
+            <div class="alert alert-info mt-3">
+                <i class="bi bi-info-circle"></i> Brak wydanych egzemplarzy.
+            </div>
+            {% endif %}
+
         </div>
 
-    </div>
-
-    <div class="card mt-4">
-        <div class="card-header bg-secondary text-white">Historia wydań</div>
-        <div class="card-body p-0">
-            {% if item_log %}
-            <div class="table-responsive">
-                <table class="table table-striped table-hover align-middle mb-0">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Data</th>
-                            <th>Akcja</th>
-                            <th>Strażak</th>
-                            <th>Wykonał</th>
-                            <th>Sposób identyfikacji</th>
-                            <th>Uwagi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for log, firefighter, user in item_log %}
-                        <tr>
-                            <td>{{ log.performed_at.strftime('%d.%m.%Y %H:%M') }}</td>
-                            <td>
-                                {% if log.action == 'issued' %}
-                                    <span class="badge bg-info">Wydanie</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">Zużycie</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ firefighter.full_name if firefighter else "—" }}</td>
-                            <td>{{ user.full_name if user else "—" }}</td>
-                            <td>
-                                {% if log.nfc_scan %}
-                                    <span class="badge bg-success">🔖 NFC</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">Ręcznie</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ log.notes or "—" }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <!-- PRAWA: historia -->
+        <div class="col-md-5">
+            <h5 class="mb-3"><i class="bi bi-clock-history"></i> Historia</h5>
+            {% if logs %}
+            <div style="max-height:500px; overflow-y:auto;">
+                {% for log in logs %}
+                <div class="d-flex gap-2 mb-2 align-items-start">
+                    <div style="width:36px; height:36px; border-radius:50%; flex-shrink:0;
+                                display:flex; align-items:center; justify-content:center;
+                                background:{% if log.action == 'issued' %}#0d6efd{% elif log.action == 'returned' %}#ffc107{% else %}#6c757d{% endif %};">
+                        <i class="bi {% if log.action == 'issued' %}bi-box-arrow-right{% elif log.action == 'returned' %}bi-arrow-return-left{% else %}bi-trash{% endif %} text-white"
+                           style="font-size:0.9rem;"></i>
+                    </div>
+                    <div style="font-size:0.85rem;">
+                        <div class="fw-semibold">
+                            {% if log.action == 'issued' %}Wydano
+                            {% elif log.action == 'returned' %}Zwrócono
+                            {% else %}Zużyto{% endif %}
+                            {% if log.nfc_scan %}
+                            <span class="badge bg-success ms-1" style="font-size:0.65rem;">NFC</span>
+                            {% endif %}
+                        </div>
+                        <div class="text-muted">{{ log.performed_at.strftime('%d.%m.%Y %H:%M') }}</div>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
             {% else %}
-            <p class="text-muted p-3">Brak historii dla tego przedmiotu.</p>
+            <p class="text-muted">Brak historii.</p>
             {% endif %}
         </div>
     </div>
-
 </div>
+
+<!-- MODAL WYDANIA -->
+{% if user and user.role in ['admin', 'manager'] %}
+<div class="modal fade" id="issueModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-box-arrow-right"></i> Wydaj: {{ item.name }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="issue-modal-form">
+                <input type="hidden" name="force_db" id="modal-force-db" value="false">
+                <div class="modal-body">
+
+                    <!-- Alert gdy pomijamy SAP -->
+                    <div id="force-db-alert" class="alert alert-warning d-none">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Wydanie z pominięciem SAP – stan SAP nie zostanie zaktualizowany.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Strażak <span class="text-danger">*</span></label>
+                        <input type="text" id="ff-search-modal" class="form-control mb-2"
+                               placeholder="Szukaj strażaka...">
+                        <select id="ff-select-modal" name="firefighter_id" class="form-select" required>
+                            <option value="">— wybierz strażaka —</option>
+                            {% for ff in firefighters %}
+                            <option value="{{ ff.firefighter_id }}"
+                                    data-name="{{ ff.full_name|lower }}">
+                                {{ ff.full_name }} ({{ ff.role_label }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Data wydania</label>
+                        <input type="date" name="issue_date" class="form-control" value="{{ today }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nr karty odzieżowej
+                            <span class="text-muted">(opcjonalne)</span>
+                        </label>
+                        <input type="text" name="clothing_card_number" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Uwagi <span class="text-muted">(opcjonalne)</span></label>
+                        <textarea name="notes" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle"></i> Wydaj
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById("ff-search-modal").addEventListener("input", function() {
+    const q = this.value.toLowerCase();
+    const select = document.getElementById("ff-select-modal");
+    Array.from(select.options).forEach(opt => {
+        if (!opt.value) return;
+        opt.style.display = (opt.dataset.name || "").includes(q) ? "" : "none";
+    });
+});
+
+function openIssueModal(itemId, forceDb) {
+    const form = document.getElementById("issue-modal-form");
+    form.action = `/Sp/items/${itemId}/issue`;
+    document.getElementById("modal-force-db").value = forceDb ? "true" : "false";
+
+    const alert = document.getElementById("force-db-alert");
+    if (forceDb) {
+        alert.classList.remove("d-none");
+    } else {
+        alert.classList.add("d-none");
+    }
+
+    // Reset selecta i wyszukiwarki
+    document.getElementById("ff-search-modal").value = "";
+    document.getElementById("ff-select-modal").value = "";
+    Array.from(document.getElementById("ff-select-modal").options)
+        .forEach(opt => opt.style.display = "");
+
+    new bootstrap.Modal(document.getElementById("issueModal")).show();
+}
+</script>
 {% endblock %}

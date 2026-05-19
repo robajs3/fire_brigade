@@ -26,7 +26,7 @@ scheduler = APScheduler()
 
 
 def create_app():
-    app = Flask(__name__, static_url_path="/Sp/static")
+    app = Flask(__name__, static_url_path="/zsr/static")
     app.config.from_object(Config)
 
     db.init_app(app)
@@ -51,7 +51,7 @@ def create_app():
 
     @app.before_request
     def redirect_mobile():
-        skip_prefixes = ["/Sp/mobile", "/Sp/static", "/Sp/api", "/Sp/cas", "/Sp/dev-login"]
+        skip_prefixes = ["/zsr/mobile", "/zsr/static", "/zsr/api", "/zsr/cas", "/zsr/dev-login"]
         if any(request.path.startswith(p) for p in skip_prefixes):
             return
         if request.args.get("desktop") == "1":

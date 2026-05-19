@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    APPLICATION_ROOT = "/Sp"
+    APPLICATION_ROOT = "/zsr"
     SECRET_KEY = os.environ.get("SECRET_KEY", secrets.token_hex(32))
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         "DATABASE_URL",

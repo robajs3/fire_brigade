@@ -4,7 +4,7 @@ from functools import wraps
 from cas_auth import login_required, validate_ticket
 from services.user_service import UserService
 
-user_bp = Blueprint("user_controller", __name__, url_prefix="/Sp")
+user_bp = Blueprint("user_controller", __name__, url_prefix="/zsr")
 
 
 def role_required(required_roles=None):

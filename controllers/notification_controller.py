@@ -4,7 +4,7 @@ from functools import wraps
 from services.user_service import UserService
 from services.notification_service import NotificationService
 
-notification_bp = Blueprint("notification_controller", __name__, url_prefix="/Sp")
+notification_bp = Blueprint("notification_controller", __name__, url_prefix="/zsr")
 
 
 # ---------------------------------------------------------

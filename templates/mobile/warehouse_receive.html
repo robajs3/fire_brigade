@@ -1,0 +1,124 @@
+{% extends "mobile/base_mobile.html" %}
+{% block title %}Przyjęcie – Magazyn SP{% endblock %}
+{% block content %}
+
+<div class="mb-3">
+    <a href="{{ url_for('mobile_controller.mobile_warehouse') }}"
+       style="color:#4a9fd4; font-size:0.85rem; text-decoration:none;">
+        <i class="bi bi-arrow-left"></i> Magazyn
+    </a>
+    <h5 style="color:#fff; font-weight:700; margin:6px 0 2px 0;">
+        <i class="bi bi-box-arrow-in-down me-2" style="color:#5cb85c;"></i>Przyjęcie do magazynu
+    </h5>
+    <div style="color:#adc4e3; font-size:0.85rem;">Dodaj nowe przedmioty do stanu</div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+    {% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }} py-2 px-3" style="border-radius:10px; font-size:0.88rem;">
+        {{ msg }}
+    </div>
+    {% endfor %}
+{% endif %}
+{% endwith %}
+
+<form method="POST"
+      action="{{ url_for('mobile_controller.mobile_warehouse_receive') }}"
+      style="display:flex; flex-direction:column; gap:14px;">
+
+    {# Przedmiot z katalogu #}
+    <div style="background:#1a2535; border-radius:14px; padding:14px;">
+        <label style="color:#adc4e3; font-size:0.8rem; margin-bottom:6px; display:block;">
+            Przedmiot <span style="color:#e05c5c;">*</span>
+        </label>
+        <select name="catalog_id" required
+                style="width:100%; background:#0d1a26; border:1px solid #2e4060;
+                       color:#fff; border-radius:10px; padding:10px 12px;
+                       font-size:0.9rem;">
+            <option value="">— wybierz przedmiot —</option>
+            {% for cat in catalog %}
+            <option value="{{ cat.catalog_id }}"
+                    {% if preselected_catalog_id == cat.catalog_id %}selected{% endif %}>
+                {{ cat.name }}{% if cat.category %} ({{ cat.category }}){% endif %}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    {# Ilość #}
+    <div style="background:#1a2535; border-radius:14px; padding:14px;">
+        <label style="color:#adc4e3; font-size:0.8rem; margin-bottom:6px; display:block;">
+            Ilość <span style="color:#e05c5c;">*</span>
+        </label>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button type="button" onclick="changeQty(-1)"
+                    style="background:#11284d; border:1px solid #2e4060; color:#fff;
+                           border-radius:10px; width:42px; height:42px;
+                           font-size:1.3rem; cursor:pointer;">−</button>
+            <input type="number" name="quantity" id="qty_input"
+                   value="1" min="1" max="999" required
+                   style="background:#0d1a26; border:1px solid #2e4060; color:#fff;
+                          border-radius:10px; padding:8px; text-align:center;
+                          font-size:1.1rem; font-weight:700; flex:1; height:42px;">
+            <button type="button" onclick="changeQty(1)"
+                    style="background:#11284d; border:1px solid #2e4060; color:#fff;
+                           border-radius:10px; width:42px; height:42px;
+                           font-size:1.3rem; cursor:pointer;">+</button>
+        </div>
+    </div>
+
+    {# Data przyjęcia #}
+    <div style="background:#1a2535; border-radius:14px; padding:14px;">
+        <label style="color:#adc4e3; font-size:0.8rem; margin-bottom:6px; display:block;">
+            Data przyjęcia <span style="color:#e05c5c;">*</span>
+        </label>
+        <input type="date" name="receive_date" required
+               value="{{ today }}"
+               style="width:100%; background:#0d1a26; border:1px solid #2e4060;
+                      color:#fff; border-radius:10px; padding:10px 12px;
+                      font-size:0.9rem;">
+    </div>
+
+    {# Numer dokumentu (opcjonalnie) #}
+    <div style="background:#1a2535; border-radius:14px; padding:14px;">
+        <label style="color:#adc4e3; font-size:0.8rem; margin-bottom:6px; display:block;">
+            Numer dokumentu / faktury
+            <span style="color:#7a9bbf;">(opcjonalnie)</span>
+        </label>
+        <input type="text" name="document_number" placeholder="np. FV/2025/001"
+               style="width:100%; background:#0d1a26; border:1px solid #2e4060;
+                      color:#fff; border-radius:10px; padding:10px 12px;
+                      font-size:0.9rem;">
+    </div>
+
+    {# Uwagi #}
+    <div style="background:#1a2535; border-radius:14px; padding:14px;">
+        <label style="color:#adc4e3; font-size:0.8rem; margin-bottom:6px; display:block;">
+            Uwagi <span style="color:#7a9bbf;">(opcjonalnie)</span>
+        </label>
+        <textarea name="notes" rows="3" placeholder="Dodatkowe informacje…"
+                  style="width:100%; background:#0d1a26; border:1px solid #2e4060;
+                         color:#fff; border-radius:10px; padding:10px 12px;
+                         font-size:0.9rem; resize:none;"></textarea>
+    </div>
+
+    {# Submit #}
+    <button type="submit"
+            style="background:#1a5c35; border:none; color:#fff; font-weight:700;
+                   border-radius:14px; padding:15px; font-size:1rem;
+                   box-shadow:0 4px 14px rgba(0,0,0,.4); cursor:pointer;">
+        <i class="bi bi-box-arrow-in-down me-2"></i>Przyjmij do magazynu
+    </button>
+
+</form>
+
+<script>
+function changeQty(delta) {
+    const el = document.getElementById('qty_input');
+    const val = parseInt(el.value) || 1;
+    el.value = Math.max(1, Math.min(999, val + delta));
+}
+</script>
+
+{% endblock %}

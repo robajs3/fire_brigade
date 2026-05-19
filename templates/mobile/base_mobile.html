@@ -5,227 +5,389 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>{% block title %}Magazyn SP{% endblock %}</title>
+    <title>{% block title %}Magazyn ZSR{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/logo-icon.png') }}">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 
     <style>
-    * { -webkit-tap-highlight-color: transparent; }
+        /* ── Zmienne ── */
+        :root {
+            --red:       #8b0000;
+            --navy:      #0a1a33;
+            --navy-mid:  #11284d;
+            --navy-light:#1a355c;
+            --accent:    #c0392b;
+            --text:      #ffffff;
+            --text-muted:#8ca5c0;
+            --transition: 0.2s cubic-bezier(.4,0,.2,1);
+            --nav-h:     48px;
+            --bottom-h:  68px;
+        }
 
-    html, body, button, input, select, textarea, a, p, span, div {
-        color: #fff !important;
-    }
+        /* ── Reset ── */
+        *, *::before, *::after { box-sizing: border-box; }
+        * { -webkit-tap-highlight-color: transparent; }
 
-    .text-muted {
-    color: #cfd6e0 !important;}
+        body {
+            background: var(--navy);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-size: 1rem;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
 
+        /* ── Page fade-in ── */
+        .page-content {
+            animation: pageFadeIn 0.28s ease both;
+        }
+        @keyframes pageFadeIn {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
 
-    body {
-        background: #0a1a33;
-        font-size: 1.1rem;
-        min-height: 100vh;
-    }
+        /* ── Top header ── */
+        .mobile-header {
+            background: linear-gradient(135deg, #8b0000 0%, #6b0000 100%);
+            padding: 0 16px;
+            height: var(--nav-h);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            box-shadow: 0 3px 16px rgba(0,0,0,0.4);
+        }
+        .mobile-header .brand {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .mobile-header .user-info {
+            font-size: 0.82rem;
+            opacity: 0.85;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
 
-    .mobile-header {
-        background: #8b0000;
-        padding: 14px 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        position: sticky;
-        top: 0;
-        z-index: 100;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-    }
+        /* ── Content wrapper ── */
+        .mobile-content {
+            padding: 16px 14px;
+            max-width: 700px;
+            margin: 0 auto;
+            padding-bottom: calc(var(--bottom-h) + 20px);
+        }
 
-    .mobile-header .brand {
-        font-size: 1.3rem;
-        font-weight: 700;
-    }
+        /* ── Cards ── */
+        .mobile-card {
+            background: var(--navy-mid);
+            border-radius: 18px;
+            padding: 18px;
+            margin-bottom: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.04);
+            transition: transform var(--transition), box-shadow var(--transition);
+            animation: cardSlideIn 0.3s ease both;
+        }
+        .mobile-card:active { transform: scale(0.99); }
+        @keyframes cardSlideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
 
-    .mobile-content {
-        padding: 20px 16px;
-        max-width: 700px;
-        margin: 0 auto;
-    }
+        /* ── Touch buttons ── */
+        .btn-touch {
+            min-height: 58px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+            transition:
+                transform var(--transition),
+                box-shadow var(--transition),
+                background-color var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-touch:active {
+            transform: scale(0.97);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
 
-    .btn-touch {
-        min-height: 64px;
-        font-size: 1.2rem;
-        font-weight: 600;
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        width: 100%;
-        margin-bottom: 14px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        transition: transform 0.1s;
-    }
-    .btn-touch:active { transform: scale(0.97); }
+        /* ── Touch row items ── */
+        .item-touch-row {
+            background: var(--navy-light);
+            border-radius: 13px;
+            padding: 15px;
+            margin-bottom: 9px;
+            cursor: pointer;
+            transition:
+                background var(--transition),
+                transform var(--transition),
+                border-color var(--transition);
+            border: 2px solid transparent;
+        }
+        .item-touch-row:active  { transform: scale(0.98); }
+        .item-touch-row.selected {
+            border-color: #28a745;
+            background: #1a3d28;
+        }
+        .item-touch-row:hover { background: #1e3d6e; }
 
-    .mobile-card {
-        background: #11284d;
-        border-radius: 16px;
-        padding: 20px;
-        margin-bottom: 16px;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-    }
+        /* ── NFC pulse ── */
+        .nfc-pulse {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.07);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.8rem;
+            margin: 16px auto;
+            animation: pulse 1.8s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%   { box-shadow: 0 0 0 0 rgba(255,255,255,0.25); }
+            60%  { box-shadow: 0 0 0 28px rgba(255,255,255,0); }
+            100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+        }
 
-    .nfc-pulse {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 3rem;
-        margin: 20px auto;
-        animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-        0%   { box-shadow: 0 0 0 0 rgba(228, 211, 211, 0.3); }
-        70%  { box-shadow: 0 0 0 30px rgba(216, 201, 201, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
-    }
+        /* ── Flash messages ── */
+        .mobile-flash {
+            border-radius: 13px;
+            padding: 13px 16px;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+            border: none;
+            animation: slideDown 0.25s ease both;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
 
-    .item-touch-row {
-        background: #1a355c;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 10px;
-        cursor: pointer;
-        transition: background 0.15s, transform 0.1s;
-        border: 2px solid transparent;
-    }
-    .item-touch-row:active  { transform: scale(0.98); }
-    .item-touch-row.selected {
-        border-color: #28a745;
-        background: #1a3d28;
-    }
+        /* ── Bottom nav ── */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: var(--bottom-h);
+            background: rgba(6, 12, 26, 0.97);
+            display: flex;
+            border-top: 1px solid rgba(255,255,255,0.07);
+            z-index: 200;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .bottom-nav a {
+            flex: 1;
+            text-align: center;
+            padding: 10px 4px 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.7rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            transition: color var(--transition), transform var(--transition);
+            position: relative;
+        }
+        .bottom-nav a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 20%;
+            right: 20%;
+            height: 2px;
+            background: var(--accent);
+            border-radius: 2px 2px 0 0;
+            transform: scaleX(0);
+            transition: transform var(--transition);
+        }
+        .bottom-nav a.active {
+            color: #fff;
+        }
+        .bottom-nav a.active::after { transform: scaleX(1); }
+        .bottom-nav a:active { transform: scale(0.92); }
+        .bottom-nav i {
+            font-size: 1.4rem;
+            line-height: 1;
+        }
+        .bottom-nav span {
+            font-weight: 500;
+        }
 
-    .mobile-flash {
-        border-radius: 12px;
-        padding: 14px 16px;
-        margin-bottom: 14px;
-        font-size: 1rem;
-    }
+        /* ── Dashboard tiles ── */
+        .mobile-tile {
+            background: var(--navy-mid);
+            border-radius: 20px;
+            padding: 22px 14px 18px;
+            text-align: center;
+            box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+            transition:
+                transform var(--transition),
+                box-shadow var(--transition);
+            cursor: pointer;
+            height: 100%;
+            min-height: 155px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .mobile-tile:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+        .mobile-tile-icon {
+            width: 68px;
+            height: 68px;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.9rem;
+            position: relative;
+        }
+        .mobile-tile-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #ef4444;
+            color: #fff;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mobile-tile-label {
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+        .mobile-tile-sub {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            line-height: 1.3;
+        }
 
-    .bottom-nav {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: #08142a;
-        display: flex;
-        border-top: 1px solid #1a355c;
-        z-index: 100;
-    }
-    .bottom-nav a {
-        flex: 1;
-        text-align: center;
-        padding: 12px 4px;
-        text-decoration: none;
-        font-size: 0.75rem;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 3px;
-        transition: color 0.15s;
-    }
-    .bottom-nav a.active,
-    .bottom-nav a:hover { color: #fff; }
-    .bottom-nav i { font-size: 1.5rem; }
+        /* ── Success icon ── */
+        .success-icon {
+            font-size: 5rem;
+            text-align: center;
+            margin: 20px 0;
+            animation: successPop 0.4s cubic-bezier(.175,.885,.32,1.275) both;
+        }
+        @keyframes successPop {
+            from { transform: scale(0.3); opacity: 0; }
+            to   { transform: scale(1);   opacity: 1; }
+        }
 
-    .page-content { padding-bottom: 80px; }
+        /* ── Text colors (override Bootstrap) ── */
+        .text-muted { color: var(--text-muted) !important; }
+        .form-control, .form-select {
+            background: var(--navy-light) !important;
+            color: #fff !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+            border-radius: 10px;
+        }
+        .form-control::placeholder { color: var(--text-muted); }
+        .form-control:focus, .form-select:focus {
+            border-color: rgba(255,255,255,0.3) !important;
+            box-shadow: 0 0 0 3px rgba(139,0,0,0.25) !important;
+        }
 
-    .success-icon {
-        font-size: 5rem;
-        text-align: center;
-        margin: 20px 0;
-    }
-    /* Kafelki dashboardu */
-.mobile-tile {
-    background: #11284d;
-    border-radius: 20px;
-    padding: 24px 16px 20px;
-    text-align: center;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.35);
-    transition: transform 0.1s, box-shadow 0.1s;
-    cursor: pointer;
-    height: 100%;
-    min-height: 160px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
+        /* ── Modal ── */
+        .modal-content {
+            background: #0d1e38;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+        }
+        .modal-header { border-color: rgba(255,255,255,0.07); }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.15);
+            border-radius: 4px;
+        }
+
+        /* ── Ripple ── */
+        .btn-touch { overflow: hidden; }
+        .ripple-m {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            transform: scale(0);
+            animation: rippleM 0.5s linear;
+            pointer-events: none;
+        }
+        @keyframes rippleM {
+            to { transform: scale(4); opacity: 0; }
+        }
+        .modal-backdrop {
+    display: none !important;
 }
-.mobile-tile:active {
-    transform: scale(0.96);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+.modal {
+    background: rgba(0,0,0,0.7);
 }
-.mobile-tile-icon {
-    width: 72px;
-    height: 72px;
-    border-radius: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2rem;
-    color: #fff;
-    position: relative;
-}
-.mobile-tile-badge {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    background: #ef4444;
-    color: #fff;
-    border-radius: 50%;
-    width: 22px;
-    height: 22px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.mobile-tile-label {
-    color: #fff;
-    font-size: 1.05rem;
-    font-weight: 700;
-}
-.mobile-tile-sub {
-    color: #8899aa;
-    font-size: 0.78rem;
-}
-</style>
-
+    </style>
 </head>
+
 <body>
 
-<div class="d-flex align-items-center gap-2">
-    <span style="font-size:0.85rem;">
-        {% if user %}{{ user.full_name_or_username }}{% endif %}
-    </span>
-    {% if user %}
-    <a href="{{ url_for('user_controller.logout') }}"
-       class="btn btn-outline-light btn-sm">
-        <i class="bi bi-box-arrow-right"></i>
+<!-- HEADER -->
+<div class="mobile-header">
+    <a href="{{ url_for('mobile_controller.mobile_dashboard') }}" style="text-decoration:none; display:flex; align-items:center;">
+        <img src="{{ url_for('static', filename='img/pcc-logo.svg') }}" alt="Logo" style="height:30px; width:auto;">
     </a>
-    {% endif %}
+    <div class="user-info">
+        {% if user %}
+        <span>{{ user.full_name_or_username }}</span>
+        <a href="{{ url_for('user_controller.logout') }}"
+           style="color:rgba(255,255,255,0.7); text-decoration:none; font-size:1.3rem;">
+            <i class="bi bi-box-arrow-right"></i>
+        </a>
+        {% endif %}
+    </div>
 </div>
 
+<!-- CONTENT -->
 <div class="mobile-content page-content">
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
-          <div class="mobile-flash alert alert-{{ category }}">{{ message }}</div>
+          <div class="mobile-flash alert alert-{{ category }}">
+              {% if category == 'success' %}<i class="bi bi-check-circle me-2"></i>
+              {% elif category == 'danger' %}<i class="bi bi-x-circle me-2"></i>
+              {% elif category == 'warning' %}<i class="bi bi-exclamation-triangle me-2"></i>
+              {% else %}<i class="bi bi-info-circle me-2"></i>{% endif %}
+              {{ message }}
+          </div>
         {% endfor %}
       {% endif %}
     {% endwith %}
@@ -234,21 +396,63 @@
 
 </div>
 
+<!-- BOTTOM NAV -->
 <nav class="bottom-nav">
     <a href="{{ url_for('mobile_controller.mobile_dashboard') }}"
        class="{% if request.endpoint == 'mobile_controller.mobile_dashboard' %}active{% endif %}">
-        <i class="bi bi-house"></i> Start
+        <i class="bi bi-house"></i>
+        <span>Start</span>
     </a>
     <a href="{{ url_for('mobile_controller.mobile_scan') }}"
        class="{% if request.endpoint and 'scan' in request.endpoint %}active{% endif %}">
-        <i class="bi bi-box-arrow-right"></i> Wydaj
+        <i class="bi bi-box-arrow-right"></i>
+        <span>Wydaj</span>
+    </a>
+    <a href="{{ url_for('mobile_controller.mobile_firefighters') }}"
+       class="{% if request.endpoint and 'firefighter' in (request.endpoint or '') %}active{% endif %}">
+        <i class="bi bi-people"></i>
+        <span>Strażacy</span>
+    </a>
+    <a href="{{ url_for('mobile_controller.mobile_notifications') }}"
+       class="{% if request.endpoint and 'notification' in (request.endpoint or '') %}active{% endif %}">
+        <i class="bi bi-bell"></i>
+        <span>Powiadomienia</span>
     </a>
     <a href="{{ url_for('dashboard_controller.dashboard') }}?desktop=1">
-        <i class="bi bi-grid"></i> Pełny widok
+        <i class="bi bi-grid"></i>
+        <span>Pulpit</span>
     </a>
 </nav>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // ── Ripple na btn-touch ──
+    document.addEventListener("click", function(e) {
+        const btn = e.target.closest(".btn-touch");
+        if (!btn) return;
+        const r = document.createElement("span");
+        r.classList.add("ripple-m");
+        const rect = btn.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height);
+        r.style.cssText = `
+            width:${size}px; height:${size}px;
+            left:${e.clientX - rect.left - size/2}px;
+            top:${e.clientY - rect.top - size/2}px;
+        `;
+        btn.appendChild(r);
+        setTimeout(() => r.remove(), 500);
+    });
+
+    // ── Animacja kart przy ładowaniu ──
+    document.addEventListener("DOMContentLoaded", () => {
+        const cards = document.querySelectorAll(".mobile-card");
+        cards.forEach((card, i) => {
+            card.style.animationDelay = `${i * 0.06}s`;
+        });
+    });
+</script>
+
 {% block scripts %}{% endblock %}
 
 </body>

@@ -8,7 +8,7 @@ from models.user_model import db
 from models.item_model import IssuanceLog, Item
 from models.firefighter_model import Firefighter
 
-dashboard_bp = Blueprint("dashboard_controller", __name__, url_prefix="/Sp")
+dashboard_bp = Blueprint("dashboard_controller", __name__, url_prefix="/zsr")
 
 
 # ---------------------------------------------------------
@@ -55,7 +55,7 @@ def dashboard():
         .join(Item, IssuanceLog.item_id == Item.item_id)
         .outerjoin(Firefighter, IssuanceLog.firefighter_id == Firefighter.firefighter_id)
         .order_by(IssuanceLog.performed_at.desc())
-        .limit(5)
+        .limit(7)
         .all()
     )
 

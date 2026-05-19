@@ -310,3 +310,43 @@ class ItemService:
         except Exception:
             db.session.rollback()
             return False
+
+    @staticmethod
+    def receive_items(catalog_id, quantity, receive_date,
+                      performed_by_user_id, document_number=None, notes=None):
+        from models.item_model import ItemCatalog
+        catalog = ItemCatalog.query.get(catalog_id)
+        if not catalog:
+            return False
+
+        combined_notes = notes or ""
+        if document_number:
+            combined_notes = f"[{document_number}] {combined_notes}".strip()
+
+        items = ItemService.create_bulk(
+            name=catalog.name,
+            unit_of_measure=catalog.unit_of_measure,
+            count=quantity,
+            catalog_id=catalog_id,
+            notes=combined_notes or None,
+        )
+
+        if not items:
+            return False
+
+        try:
+            for item in items:
+                log = IssuanceLog(
+                    item_id=item.item_id,
+                    firefighter_id=None,
+                    action="received",
+                    performed_by=performed_by_user_id,
+                    notes=combined_notes or None,
+                )
+                db.session.add(log)
+            db.session.commit()
+            return True
+        except SQLAlchemyError:
+            db.session.rollback()
+            return False
+print("receive_items exists:", hasattr(ItemService, 'receive_items'))

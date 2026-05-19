@@ -1,0 +1,67 @@
+{% extends "mobile/base_mobile.html" %}
+{% block title %}Przyjęto – Magazyn SP{% endblock %}
+{% block content %}
+
+<div style="text-align:center; padding:30px 0 20px 0;">
+    <div style="background:#1a5c35; width:80px; height:80px; border-radius:50%;
+                display:flex; align-items:center; justify-content:center;
+                margin:0 auto 16px auto; font-size:2.2rem; color:#5cb85c;
+                box-shadow:0 0 30px rgba(92,184,92,.3);">
+        <i class="bi bi-check-lg"></i>
+    </div>
+    <h5 style="color:#fff; font-weight:700; margin-bottom:4px;">Przyjęto do magazynu</h5>
+    <div style="color:#adc4e3; font-size:0.88rem;">Operacja zakończona pomyślnie</div>
+</div>
+
+<div style="background:#1a2535; border-radius:14px; padding:16px; margin-bottom:16px;">
+    <div style="color:#adc4e3; font-size:0.78rem; margin-bottom:10px;
+                text-transform:uppercase; letter-spacing:.05em;">Podsumowanie</div>
+
+    <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; justify-content:space-between;">
+            <span style="color:#7a9bbf; font-size:0.85rem;">Przedmiot</span>
+            <span style="color:#fff; font-weight:600; font-size:0.9rem;">
+                {{ catalog_entry.name }}
+            </span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+            <span style="color:#7a9bbf; font-size:0.85rem;">Ilość</span>
+            <span style="color:#5cb85c; font-weight:700; font-size:1rem;">
+                +{{ quantity }} szt.
+            </span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+            <span style="color:#7a9bbf; font-size:0.85rem;">Data przyjęcia</span>
+            <span style="color:#fff; font-size:0.85rem;">{{ receive_date }}</span>
+        </div>
+        {% if document_number %}
+        <div style="display:flex; justify-content:space-between;">
+            <span style="color:#7a9bbf; font-size:0.85rem;">Dokument</span>
+            <span style="color:#fff; font-size:0.85rem;">{{ document_number }}</span>
+        </div>
+        {% endif %}
+        {% if notes %}
+        <div>
+            <span style="color:#7a9bbf; font-size:0.85rem;">Uwagi</span>
+            <div style="color:#adc4e3; font-size:0.85rem; margin-top:3px;">{{ notes }}</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div style="display:flex; flex-direction:column; gap:10px;">
+    <a href="{{ url_for('mobile_controller.mobile_warehouse_receive_form') }}"
+       style="background:#1a5c35; border:none; color:#fff; font-weight:600;
+              border-radius:14px; padding:14px; font-size:0.95rem;
+              text-decoration:none; text-align:center; display:block;">
+        <i class="bi bi-plus-lg me-2"></i>Przyjmij kolejny
+    </a>
+    <a href="{{ url_for('mobile_controller.mobile_warehouse') }}"
+       style="background:#11284d; border:1px solid #2e4060; color:#4a9fd4;
+              font-weight:600; border-radius:14px; padding:14px; font-size:0.95rem;
+              text-decoration:none; text-align:center; display:block;">
+        <i class="bi bi-box-seam me-2"></i>Wróć do magazynu
+    </a>
+</div>
+
+{% endblock %}
