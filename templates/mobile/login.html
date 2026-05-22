@@ -1,0 +1,75 @@
+{% extends "mobile/base_mobile.html" %}
+{% block title %}Logowanie – Magazyn ZSR{% endblock %}
+{% block content %}
+<div class="text-center mt-4 mb-4">
+    <h4 style="color:#fff;">Logowanie</h4>
+    <p style="color:#adc4e3;">Przyłóż kartę NFC do czytnika</p>
+    <button id="test-nfc" class="btn btn-warning btn-touch mt-3">
+        Zezwól na NFC
+    </button>
+</div>
+
+<div class="mobile-card text-center">
+    <div class="nfc-pulse" id="nfc-pulse">📡</div>
+    <div id="nfc-status" style="color:#adc4e3; margin-top:12px;">Oczekiwanie na kartę...</div>
+    <div id="nfc-error" class="alert alert-danger mt-3" style="display:none;"></div>
+</div>
+
+<input id="nfc-input" type="text"
+       style="position:fixed; top:-1000px; left:-1000px; width:1px; height:1px;"
+       autocomplete="off">
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/nfc.js') }}"></script>
+<script>
+
+document.getElementById("test-nfc").addEventListener("click", async function() {
+    try {
+        const ndef = new NDEFReader();
+        await ndef.scan();
+        document.getElementById("nfc-status").textContent = "NFC aktywne – przyłóż kartę";
+        
+        ndef.addEventListener("reading", ({ message, serialNumber }) => {
+            document.getElementById("nfc-status").textContent = "Odczytano: " + serialNumber;
+        });
+
+        ndef.addEventListener("readingerror", (e) => {
+            document.getElementById("nfc-status").textContent = "Błąd odczytu: " + e;
+        });
+
+    } catch(e) {
+        document.getElementById("nfc-status").textContent = "Błąd: " + e.message;
+    }
+});
+
+const reader = new NFCReader("nfc-input", function(data) {
+    document.getElementById("nfc-status").textContent = "Weryfikacja karty...";
+    document.getElementById("nfc-pulse").style.animationPlayState = "paused";
+
+    fetch("{{ url_for('auth_mobile.mobile_login_nfc') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nfc_hash: data.hash })
+    })
+    .then(res => res.json())
+    .then(json => {
+        if (json.success) {
+            document.getElementById("nfc-status").textContent = "Zalogowano: " + json.full_name;
+            window.location.href = "{{ url_for('mobile_controller.mobile_dashboard') }}";
+        } else {
+            document.getElementById("nfc-error").textContent = json.error;
+            document.getElementById("nfc-error").style.display = "block";
+            document.getElementById("nfc-status").textContent = "Spróbuj ponownie";
+            document.getElementById("nfc-pulse").style.animationPlayState = "running";
+        }
+    })
+    .catch(() => {
+        document.getElementById("nfc-error").textContent = "Błąd połączenia.";
+        document.getElementById("nfc-error").style.display = "block";
+    });
+});
+
+reader.startListening();
+</script>
+{% endblock %}

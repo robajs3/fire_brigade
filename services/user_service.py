@@ -13,6 +13,12 @@ class UserService:
         return User.query.get(user_id)
 
     @staticmethod
+    def get_user_by_nfc_hash(nfc_hash):
+        if not nfc_hash:
+            return None
+        return User.query.filter_by(nfc_hash=nfc_hash.strip()).first()
+
+    @staticmethod
     def get_all_active_users():
         return User.query.filter_by(is_active=True).all()
 
@@ -37,7 +43,7 @@ class UserService:
             return None
 
     @staticmethod
-    def update_user(user_id, full_name=None, role=None, is_active=None):
+    def update_user(user_id, full_name=None, role=None, is_active=None, nfc_hash=None):
         user = UserService.get_user_by_id(user_id)
         if not user:
             return None
@@ -48,6 +54,8 @@ class UserService:
                 user.role = role
             if is_active is not None:
                 user.is_active = is_active
+            if nfc_hash is not None:
+                user.nfc_hash = nfc_hash.strip() or None
             db.session.commit()
             return user
         except SQLAlchemyError:

@@ -22,14 +22,24 @@ from controllers.log_controller import log_bp
 
 from flask_apscheduler import APScheduler
 
+from flask_jwt_extended import JWTManager
+from controllers.auth_mobile_controller import auth_mobile_bp
+
 scheduler = APScheduler()
 
 
 def create_app():
     app = Flask(__name__, static_url_path="/zsr/static")
     app.config.from_object(Config)
-
     db.init_app(app)
+    
+    jwt = JWTManager(app)
+    app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
+    app.config["JWT_COOKIE_SECURE"] = False  # True na HTTPS
+    app.config["JWT_COOKIE_CSRF_PROTECT"] = False
+    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = False  # lub timedelta(hours=8)
+
+    app.register_blueprint(auth_mobile_bp)
 
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(user_bp)
@@ -100,4 +110,4 @@ def create_app():
 
 if __name__ == "__main__":
     app = create_app()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5443, debug=True, ssl_context=("cert.pem", "key.pem"))

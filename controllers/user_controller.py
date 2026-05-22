@@ -205,6 +205,40 @@ def delete_user(id):
 
     return redirect(url_for("user_controller.users_list"))
 
+@user_bp.route("/users/<int:id>/assign-nfc", methods=["POST"])
+@login_required
+@role_required(["admin"])
+def assign_nfc_to_user(id):
+    nfc_hash = request.form.get("nfc_hash", "").strip()
+
+    if not nfc_hash:
+        flash("Brak danych karty NFC.", "danger")
+        return redirect(url_for("user_controller.users_list"))
+
+    existing = UserService.get_user_by_nfc_hash(nfc_hash)
+    if existing and existing.user_id != id:
+        flash(f"Ta karta jest już przypisana do: {existing.full_name_or_username}.", "danger")
+        return redirect(url_for("user_controller.users_list"))
+
+    result = UserService.update_user(id, nfc_hash=nfc_hash)
+    if result:
+        flash("Karta NFC została przypisana.", "success")
+    else:
+        flash("Błąd podczas przypisywania karty NFC.", "danger")
+
+    return redirect(url_for("user_controller.users_list"))
+
+
+@user_bp.route("/users/<int:id>/remove-nfc", methods=["POST"])
+@login_required
+@role_required(["admin"])
+def remove_nfc_from_user(id):
+    result = UserService.update_user(id, nfc_hash="")
+    if result:
+        flash("Karta NFC została usunięta.", "success")
+    else:
+        flash("Błąd podczas usuwania karty NFC.", "danger")
+    return redirect(url_for("user_controller.users_list"))
 
 # ---------------------------------------------------------
 # DEV LOGIN (tylko debug=True)

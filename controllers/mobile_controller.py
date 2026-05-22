@@ -1,35 +1,39 @@
-from flask import Blueprint, render_template, session, redirect, url_for, request, flash, jsonify
+from flask import Blueprint, render_template, session, redirect, url_for, request, flash, jsonify, g
 from functools import wraps
 from datetime import date
+from collections import defaultdict
 
 from services.user_service import UserService
 from services.item_service import ItemService
 from services.firefighter_service import FirefighterService
 from services.catalog_service import CatalogService
 from models.item_model import RoleRequiredItem, Item
+from controllers.auth_mobile_controller import mobile_login_required
 
 mobile_bp = Blueprint("mobile_controller", __name__, url_prefix="/zsr/mobile")
 
 
-def role_required(required_roles=None):
+def role_required_jwt(required_roles=None):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            cas_username = session.get("CAS_USERNAME")
-            if not cas_username:
-                return redirect(url_for("user_controller.cas_login"))
-            user = UserService.get_user_by_cas_username(cas_username)
-            if not user or not user.is_active:
-                return redirect(url_for("user_controller.cas_login"))
+            user = g.get("mobile_user")
+            if not user:
+                return redirect(url_for("auth_mobile.mobile_login_page"))
             if required_roles and user.role not in required_roles:
-                return redirect(url_for("user_controller.unauthorize"))
+                flash("Brak uprawnień.", "danger")
+                return redirect(url_for("mobile_controller.mobile_dashboard"))
             return f(*args, **kwargs)
         return wrapper
     return decorator
 
 
+def _get_mobile_user():
+    return g.get("mobile_user")
+
+
 @mobile_bp.route("/")
-@role_required()
+@mobile_login_required
 def mobile_dashboard():
     from services.notification_service import NotificationService
     session.pop("force_desktop", None)
@@ -40,7 +44,7 @@ def mobile_dashboard():
 
 
 @mobile_bp.route("/scan")
-@role_required()
+@mobile_login_required
 def mobile_scan():
     session.pop("last_nfc_scan", None)
     firefighters = FirefighterService.get_all_active()
@@ -48,14 +52,14 @@ def mobile_scan():
 
 
 @mobile_bp.route("/firefighters")
-@role_required()
+@mobile_login_required
 def mobile_firefighters():
     firefighters = FirefighterService.get_all_active()
     return render_template("mobile/firefighters.html", firefighters=firefighters)
 
 
 @mobile_bp.route("/notifications")
-@role_required()
+@mobile_login_required
 def mobile_notifications():
     from services.notification_service import NotificationService
     notifications = NotificationService.get_notifications()
@@ -66,7 +70,8 @@ def mobile_notifications():
 
 
 @mobile_bp.route("/logs")
-@role_required(["manager", "admin"])
+@mobile_login_required
+@role_required_jwt(["manager", "admin"])
 def mobile_logs():
     from models.user_model import db, User
     from models.item_model import IssuanceLog, Item as ItemModel
@@ -125,7 +130,7 @@ def mobile_logs():
 
 
 @mobile_bp.route("/firefighter/<int:firefighter_id>")
-@role_required()
+@mobile_login_required
 def mobile_firefighter(firefighter_id):
     firefighter = FirefighterService.get_by_id(firefighter_id)
     if not firefighter:
@@ -169,7 +174,7 @@ def mobile_firefighter(firefighter_id):
 
 
 @mobile_bp.route("/confirm", methods=["POST"])
-@role_required()
+@mobile_login_required
 def mobile_confirm():
     firefighter_id = request.form.get("firefighter_id")
     catalog_id     = request.form.get("catalog_id")
@@ -196,7 +201,8 @@ def mobile_confirm():
 
 
 @mobile_bp.route("/issue", methods=["POST"])
-@role_required(["manager", "admin"])
+@mobile_login_required
+@role_required_jwt(["manager", "admin"])
 def mobile_issue():
     firefighter_id = int(request.form.get("firefighter_id"))
     catalog_id     = int(request.form.get("catalog_id"))
@@ -205,7 +211,7 @@ def mobile_issue():
     notes          = request.form.get("notes")
     nfc_scan       = session.pop("last_nfc_scan", False)
 
-    user          = UserService.get_user_by_cas_username(session["CAS_USERNAME"])
+    user          = _get_mobile_user()
     firefighter   = FirefighterService.get_by_id(firefighter_id)
     catalog_entry = CatalogService.get_by_id(catalog_id)
 
@@ -248,7 +254,7 @@ def mobile_issue():
 
 
 @mobile_bp.route("/api/firefighter-by-nfc/<nfc_hash>")
-@role_required()
+@mobile_login_required
 def api_firefighter_by_nfc(nfc_hash):
     ff = FirefighterService.get_by_nfc_hash(nfc_hash)
     if not ff:
@@ -262,16 +268,9 @@ def api_firefighter_by_nfc(nfc_hash):
         "full_name": ff.full_name,
         "role":      ff.role_label
     })
-    
-# ─────────────────────────────────────────────
-#  MAGAZYN MOBILNY  –  dodaj do mobile_controller.py
-# ─────────────────────────────────────────────
-
-from collections import defaultdict
 
 
 def _warehouse_summary(entries):
-    """Zwraca słownik z liczbami do kafelków podsumowania."""
     total     = len(entries)
     available = sum(1 for e in entries if e.qty_free > 0
                     and e.qty_free > e.low_stock_threshold)
@@ -280,22 +279,15 @@ def _warehouse_summary(entries):
 
 
 @mobile_bp.route("/warehouse")
-@role_required()
+@mobile_login_required
 def mobile_warehouse():
-    from models.item_model import Item
-
     q               = request.args.get("q", "").strip()
     category_filter = request.args.get("category", "all")
     stock_filter    = request.args.get("stock", "all")
 
-    # Pobierz aktywne pozycje katalogu
     catalog_items = CatalogService.get_all_active()
+    all_items     = Item.query.filter_by(is_consumed=False).all()
 
-    # Pobierz surowe przedmioty (nie skonsumowane)
-    items_query = Item.query.filter_by(is_consumed=False)
-    all_items   = items_query.all()
-
-    # Zgrupuj po catalog_id
     free_counts   = defaultdict(int)
     issued_counts = defaultdict(int)
     for it in all_items:
@@ -305,49 +297,41 @@ def mobile_warehouse():
             else:
                 issued_counts[it.catalog_id] += 1
 
-    # Zbuduj listę wpisów widoku
-    LOW_STOCK_DEFAULT = 2   # jeśli CatalogItem nie ma własnego progu
+    LOW_STOCK_DEFAULT = 2
 
     class WarehouseEntry:
         def __init__(self, catalog_item):
-            self.catalog_item      = catalog_item
-            self.qty_free          = free_counts.get(catalog_item.catalog_id, 0)
-            self.qty_issued        = issued_counts.get(catalog_item.catalog_id, 0)
+            self.catalog_item        = catalog_item
+            self.qty_free            = free_counts.get(catalog_item.catalog_id, 0)
+            self.qty_issued          = issued_counts.get(catalog_item.catalog_id, 0)
             self.low_stock_threshold = getattr(
                 catalog_item, "low_stock_threshold", LOW_STOCK_DEFAULT
             )
 
     entries = [WarehouseEntry(c) for c in catalog_items]
 
-    # Filtr tekstowy
     if q:
-        entries = [e for e in entries
-                   if q.lower() in e.catalog_item.name.lower()]
+        entries = [e for e in entries if q.lower() in e.catalog_item.name.lower()]
 
-    # Filtr kategorii
     categories = sorted({
         e.catalog_item.category
         for e in entries
         if getattr(e.catalog_item, "category", None)
     })
+
     if category_filter != "all":
         entries = [e for e in entries
                    if getattr(e.catalog_item, "category", None) == category_filter]
 
-    # Filtr stanu
     if stock_filter == "ok":
-        entries = [e for e in entries
-                   if e.qty_free > e.low_stock_threshold]
+        entries = [e for e in entries if e.qty_free > e.low_stock_threshold]
     elif stock_filter == "low":
-        entries = [e for e in entries
-                   if 0 < e.qty_free <= e.low_stock_threshold]
+        entries = [e for e in entries if 0 < e.qty_free <= e.low_stock_threshold]
     elif stock_filter == "zero":
         entries = [e for e in entries if e.qty_free == 0]
 
     summary = _warehouse_summary(entries)
-
-    # Rola zalogowanego użytkownika (do szablonu)
-    user = UserService.get_user_by_cas_username(session["CAS_USERNAME"])
+    user    = _get_mobile_user()
 
     return render_template(
         "mobile/warehouse.html",
@@ -362,9 +346,10 @@ def mobile_warehouse():
 
 
 @mobile_bp.route("/warehouse/receive", methods=["GET"])
-@role_required(["manager", "admin"])
+@mobile_login_required
+@role_required_jwt(["manager", "admin"])
 def mobile_warehouse_receive_form():
-    catalog              = CatalogService.get_all_active()
+    catalog                = CatalogService.get_all_active()
     preselected_catalog_id = request.args.get("catalog_id", type=int)
     return render_template(
         "mobile/warehouse_receive.html",
@@ -375,7 +360,8 @@ def mobile_warehouse_receive_form():
 
 
 @mobile_bp.route("/warehouse/receive", methods=["POST"])
-@role_required(["manager", "admin"])
+@mobile_login_required
+@role_required_jwt(["manager", "admin"])
 def mobile_warehouse_receive():
     catalog_id      = request.form.get("catalog_id", type=int)
     quantity        = request.form.get("quantity", type=int)
@@ -392,9 +378,7 @@ def mobile_warehouse_receive():
         flash("Nie znaleziono przedmiotu w katalogu.", "danger")
         return redirect(url_for("mobile_controller.mobile_warehouse_receive_form"))
 
-    user = UserService.get_user_by_cas_username(session["CAS_USERNAME"])
-
-    # Utwórz `quantity` nowych rekordów Item
+    user    = _get_mobile_user()
     success = ItemService.receive_items(
         catalog_id=catalog_id,
         quantity=quantity,
@@ -417,8 +401,10 @@ def mobile_warehouse_receive():
         notes=notes,
     )
 
+
 @mobile_bp.route("/firefighter/<int:firefighter_id>/assign-nfc", methods=["POST"])
-@role_required(["manager", "admin"])
+@mobile_login_required
+@role_required_jwt(["manager", "admin"])
 def mobile_assign_nfc(firefighter_id):
     nfc_username = request.form.get("nfc_username") or None
     nfc_hash     = request.form.get("nfc_hash") or None
@@ -447,3 +433,38 @@ def mobile_assign_nfc(firefighter_id):
 
     return redirect(url_for("mobile_controller.mobile_firefighter",
                             firefighter_id=firefighter_id))
+    
+@mobile_bp.route("/users")
+@mobile_login_required
+@role_required_jwt()
+def mobile_users():
+    users = UserService.get_all_users()
+    return render_template("mobile/users.html", users=users)
+
+@mobile_bp.route("/users/<int:id>/assign-nfc", methods=["POST"])
+@mobile_login_required
+@role_required_jwt(["admin"])
+def mobile_assign_user_nfc(id):
+    nfc_hash = request.form.get("nfc_hash", "").strip()
+
+    if not nfc_hash:
+        flash("Brak danych karty NFC.", "danger")
+        return redirect(url_for("mobile_controller.mobile_users"))
+
+    existing = UserService.get_user_by_nfc_hash(nfc_hash)
+
+    if existing and existing.user_id != id:
+        flash(
+            f"Ta karta jest już przypisana do: {existing.full_name_or_username}.",
+            "danger"
+        )
+        return redirect(url_for("mobile_controller.mobile_users"))
+
+    result = UserService.update_user(id, nfc_hash=nfc_hash)
+
+    if result:
+        flash("Karta NFC została przypisana.", "success")
+    else:
+        flash("Błąd podczas przypisywania karty NFC.", "danger")
+
+    return redirect(url_for("mobile_controller.mobile_users"))

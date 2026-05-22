@@ -1,0 +1,182 @@
+{% extends "mobile/base_mobile.html" %}
+{% block title %}Użytkownicy{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 style="color:#fff; margin:0;">
+        <i class="bi bi-person-gear"></i> Użytkownicy
+    </h5>
+    <span class="badge bg-secondary">{{ users|length }}</span>
+</div>
+
+<input type="text" id="search-users" class="form-control mb-3"
+       placeholder="Szukaj użytkownika...">
+
+{% for u in users %}
+<div class="mobile-card user-row" data-name="{{ u.full_name_or_username|lower }}">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <div style="font-weight:700; color:#fff;">{{ u.full_name_or_username }}</div>
+            <small style="color:#adc4e3;">{{ u.cas_username }}</small>
+        </div>
+        <div class="d-flex flex-column align-items-end gap-1">
+            {% if u.role == 'admin' %}
+                <span class="badge bg-danger">Admin</span>
+            {% elif u.role == 'manager' %}
+                <span class="badge bg-warning text-dark">Manager</span>
+            {% else %}
+                <span class="badge bg-secondary">Viewer</span>
+            {% endif %}
+            {% if u.is_active %}
+                <span class="badge bg-success">Aktywny</span>
+            {% else %}
+                <span class="badge bg-secondary">Nieaktywny</span>
+            {% endif %}
+            {% if u.nfc_hash %}
+                <span class="badge bg-info"><i class="bi bi-upc-scan"></i> NFC</span>
+            {% else %}
+                <span class="badge bg-secondary"><i class="bi bi-wifi-off"></i> Brak NFC</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-3 flex-wrap">
+        {% if not u.nfc_hash %}
+        <button class="btn btn-sm btn-warning"
+                onclick="openNFCModal({{ u.user_id }}, '{{ u.full_name_or_username }}')">
+            <i class="bi bi-upc-scan"></i> Przypisz NFC
+        </button>
+        {% else %}
+        <form method="POST"
+              action="{{ url_for('user_controller.remove_nfc_from_user', id=u.user_id) }}"
+              onsubmit="return confirm('Usunąć kartę NFC?')">
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-x-circle"></i> Usuń NFC
+            </button>
+        </form>
+        {% endif %}
+
+        <form method="POST"
+              action="{{ url_for('user_controller.toggle_user', id=u.user_id) }}"
+              onsubmit="return confirm('Zmienić status użytkownika?')">
+            {% if u.is_active %}
+            <button type="submit" class="btn btn-sm btn-outline-warning">
+                <i class="bi bi-pause-circle"></i> Wyłącz
+            </button>
+            {% else %}
+            <button type="submit" class="btn btn-sm btn-outline-success">
+                <i class="bi bi-play-circle"></i> Włącz
+            </button>
+            {% endif %}
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+<!-- MODAL NFC -->
+<div class="modal fade" id="nfcUserModal" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen-sm-down">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#8b0000; border:none;">
+                <h5 class="modal-title" style="color:#fff;">
+                    <i class="bi bi-upc-scan"></i> Przypisz kartę NFC
+                </h5>
+                <button type="button" class="btn-close btn-close-white"
+                        data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p id="nfc-user-label" class="fw-bold mb-3" style="color:#fff;"></p>
+                <div id="nfc-waiting">
+                    <div class="nfc-pulse">📡</div>
+                    <p style="color:#adc4e3;">Przyłóż kartę NFC do telefonu</p>
+                </div>
+                <div id="nfc-success-section" style="display:none;">
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i>
+                        Karta odczytana: <span id="nfc-read-name"></span>
+                    </div>
+                    <button class="btn btn-success btn-touch" onclick="submitNFCUser()">
+                        <i class="bi bi-save"></i> Zapisz
+                    </button>
+                    <button class="btn btn-outline-light btn-touch" onclick="resetNFCUser()">
+                        <i class="bi bi-arrow-clockwise"></i> Skanuj ponownie
+                    </button>
+                </div>
+                <div id="nfc-error-section" style="display:none;">
+                    <div class="alert alert-danger" id="nfc-error-msg"></div>
+                    <button class="btn btn-outline-light btn-touch" onclick="resetNFCUser()">
+                        <i class="bi bi-arrow-clockwise"></i> Spróbuj ponownie
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form id="nfc-user-form" method="POST" style="display:none;">
+    <input type="hidden" name="nfc_hash" id="nfc-user-hash">
+</form>
+
+<input id="nfc-user-input" type="text"
+       style="position:fixed; top:-1000px; left:-1000px; width:1px; height:1px;"
+       autocomplete="off">
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/nfc.js') }}"></script>
+<script>
+// Wyszukiwarka
+document.getElementById("search-users").addEventListener("input", function() {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll(".user-row").forEach(row => {
+        row.style.display = row.dataset.name.includes(q) ? "" : "none";
+    });
+});
+
+// NFC Modal
+let nfcUserReader = null;
+
+function openNFCModal(userId, userName) {
+    document.getElementById("nfc-user-label").textContent = "Użytkownik: " + userName;
+    document.getElementById("nfc-user-form").action =
+        "{{ url_for('mobile_controller.mobile_assign_user_nfc', id=0) }}"
+        .replace("0", userId);
+
+    const modal = new bootstrap.Modal(document.getElementById("nfcUserModal"));
+    modal.show();
+
+    document.getElementById("nfcUserModal").addEventListener("shown.bs.modal", function start() {
+        nfcUserReader = new NFCReader("nfc-user-input", function(data) {
+            document.getElementById("nfc-user-hash").value = data.hash;
+            document.getElementById("nfc-read-name").textContent = data.userName || data.hash;
+            document.getElementById("nfc-waiting").style.display = "none";
+            document.getElementById("nfc-success-section").style.display = "block";
+            if (nfcUserReader) nfcUserReader.stopListening();
+        });
+        nfcUserReader.startListening();
+        this.removeEventListener("shown.bs.modal", start);
+    });
+
+    document.getElementById("nfcUserModal").addEventListener("hidden.bs.modal", function stop() {
+        if (nfcUserReader) nfcUserReader.stopListening();
+        this.removeEventListener("hidden.bs.modal", stop);
+    });
+}
+
+function resetNFCUser() {
+    document.getElementById("nfc-waiting").style.display = "block";
+    document.getElementById("nfc-success-section").style.display = "none";
+    document.getElementById("nfc-error-section").style.display = "none";
+    document.getElementById("nfc-user-hash").value = "";
+    if (nfcUserReader) {
+        nfcUserReader.stopListening();
+        nfcUserReader.startListening();
+    }
+}
+
+function submitNFCUser() {
+    document.getElementById("nfc-user-form").submit();
+}
+</script>
+{% endblock %}

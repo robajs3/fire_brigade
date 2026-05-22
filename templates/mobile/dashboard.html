@@ -5,7 +5,7 @@
 
 <div class="text-center mb-4 mt-2">
     <div style="font-size:1.1rem; color:#adc4e3;">
-        Witaj, <strong style="color:#fff;">
+        Witaj <strong style="color:#fff;">
             {{ user.full_name_or_username if user else '' }}
         </strong>
     </div>
@@ -87,6 +87,7 @@
         </div>
     </a>
     <!-- Pełny widok -->
+     <!--
     <a href="{{ url_for('dashboard_controller.dashboard') }}?desktop=1"
        style="text-decoration:none;">
         <div class="mobile-tile">
@@ -94,9 +95,33 @@
                 <i class="bi bi-grid"></i>
             </div>
             <div class="mobile-tile-label">Pełny widok</div>
-            <div class="mobile-tile-sub">Panel zarządzania</div>
+            <div class="mobile-tile-sub">Niedostępny z VPN</div>
         </div>
     </a>
+    -->
+    <!-- Użytkownicy -->
+    {% if user and user.role == 'admin' %}
+    <a href="{{ url_for('mobile_controller.mobile_users') }}"
+       style="text-decoration:none;">
+        <div class="mobile-tile">
+            <div class="mobile-tile-icon" style="background:#1a3d2e;">
+                <i class="bi bi-person-gear"></i>
+            </div>
+            <div class="mobile-tile-label">Użytkownicy</div>
+            <div class="mobile-tile-sub">Zarządzaj dostępem</div>
+        </div>
+    </a>
+    {% endif %}
+    <a href="{{ url_for('auth_mobile.mobile_logout') }}"
+   style="text-decoration:none;">
+    <div class="mobile-tile">
+        <div class="mobile-tile-icon" style="background:#7a1a1a;">
+            <i class="bi bi-box-arrow-right"></i>
+        </div>
+        <div class="mobile-tile-label">Wyloguj</div>
+        <div class="mobile-tile-sub">Zakończ sesję</div>
+    </div>
+</a>
 </div>
 
 {% endblock %}

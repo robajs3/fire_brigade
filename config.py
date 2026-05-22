@@ -22,6 +22,7 @@ class Config:
 
     SAP_WERK  = os.environ.get("SAP_WERK",  "1005")
     SAP_LGORT = os.environ.get("SAP_LGORT", "S032")
+    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "dev-jwt-secret")
 
     @classmethod
     def get_sap_config(cls):
