@@ -169,7 +169,7 @@
     const nfcConfirmForm  = document.getElementById("nfc-confirm-form");
     const nfcFirefighterName = document.getElementById("nfc-firefighter-name");
     const nfcFirefighterId   = document.getElementById("nfc_firefighter_id");
-    const apiUrl = "/Sp/api/firefighters/by-nfc";
+    const apiUrl = "/zsr/api/firefighters/by-nfc";
 
     const reader = new NFCReader("nfc-input", (data) => {
         fetch(apiUrl + "/" + data.hash)

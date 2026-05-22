@@ -74,7 +74,7 @@
                     {% for ff in firefighters %}
                     <div class="item-touch-row"
                          data-name="{{ ff.full_name|lower }}"
-                         onclick="window.location='/Sp/mobile/firefighter/{{ ff.firefighter_id }}'">
+                         onclick="window.location='/zsr/mobile/firefighter/{{ ff.firefighter_id }}'">
                         <strong style="color:#fff;">{{ ff.full_name }}</strong>
                         <small style="color:#adc4e3; display:block;">{{ ff.role_label }}</small>
                     </div>
@@ -121,7 +121,7 @@
 
     function startNFC() {
         nfcReader = new NFCReader("nfc-input", function(data) {
-            fetch("/Sp/mobile/api/firefighter-by-nfc/" + encodeURIComponent(data.hash))
+            fetch("/zsr/mobile/api/firefighter-by-nfc/" + encodeURIComponent(data.hash))
                 .then(function(res) { return res.ok ? res.json() : null; })
                 .then(function(json) {
                     if (json) {
@@ -131,7 +131,7 @@
                         document.getElementById("nfc-error").style.display = "none";
                         document.getElementById("nfc-timeout-info").style.display = "none";
                         document.getElementById("nfc-waiting").style.display = "none";
-                        document.getElementById("go-link").href = "/Sp/mobile/firefighter/" + json.id + "?nfc=1";
+                        document.getElementById("go-link").href = "/zsr/mobile/firefighter/" + json.id + "?nfc=1";
                         document.getElementById("go-btn").style.display = "block";
                     } else {
                         document.getElementById("nfc-error").style.display = "block";

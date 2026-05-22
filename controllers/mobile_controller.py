@@ -416,3 +416,34 @@ def mobile_warehouse_receive():
         document_number=document_number,
         notes=notes,
     )
+
+@mobile_bp.route("/firefighter/<int:firefighter_id>/assign-nfc", methods=["POST"])
+@role_required(["manager", "admin"])
+def mobile_assign_nfc(firefighter_id):
+    nfc_username = request.form.get("nfc_username") or None
+    nfc_hash     = request.form.get("nfc_hash") or None
+
+    if not nfc_hash:
+        flash("Brak danych karty NFC.", "danger")
+        return redirect(url_for("mobile_controller.mobile_firefighter",
+                                firefighter_id=firefighter_id))
+
+    existing = FirefighterService.get_by_nfc_hash(nfc_hash)
+    if existing and existing.firefighter_id != firefighter_id:
+        flash(f"Ta karta jest już przypisana do: {existing.full_name}.", "danger")
+        return redirect(url_for("mobile_controller.mobile_firefighter",
+                                firefighter_id=firefighter_id))
+
+    result = FirefighterService.update(
+        firefighter_id,
+        nfc_username=nfc_username,
+        nfc_hash=nfc_hash
+    )
+
+    if result:
+        flash("Karta NFC została przypisana.", "success")
+    else:
+        flash("Błąd podczas przypisywania karty NFC.", "danger")
+
+    return redirect(url_for("mobile_controller.mobile_firefighter",
+                            firefighter_id=firefighter_id))

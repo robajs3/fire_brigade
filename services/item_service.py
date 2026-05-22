@@ -349,4 +349,3 @@ class ItemService:
         except SQLAlchemyError:
             db.session.rollback()
             return False
-print("receive_items exists:", hasattr(ItemService, 'receive_items'))

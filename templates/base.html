@@ -420,7 +420,7 @@
 
     // ── Powiadomienia badge ──
     function loadNotificationsCount() {
-        fetch("/Sp/api/notifications/count")
+        fetch("/zsr/api/notifications/count")
             .then(res => res.json())
             .then(data => {
                 const badge = document.getElementById("notif-badge");

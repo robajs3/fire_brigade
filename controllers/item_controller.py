@@ -1,5 +1,3 @@
-print(">>> ŁADUJE items_list z pliku:", __file__)
-
 from datetime import date
 from flask import Blueprint, render_template, session, redirect, url_for, request, flash
 from functools import wraps

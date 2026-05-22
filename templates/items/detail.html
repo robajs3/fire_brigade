@@ -284,7 +284,7 @@ document.getElementById("ff-search-modal").addEventListener("input", function() 
 
 function openIssueModal(itemId, forceDb) {
     const form = document.getElementById("issue-modal-form");
-    form.action = `/Sp/items/${itemId}/issue`;
+form.action = "{{ url_for('item_controller.issue_item_post', id=0) }}".replace("/0/issue", `/${itemId}/issue`);
     document.getElementById("modal-force-db").value = forceDb ? "true" : "false";
 
     const alert = document.getElementById("force-db-alert");

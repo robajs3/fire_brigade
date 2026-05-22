@@ -146,11 +146,8 @@
 
 <!-- FORM PRZYPISANIA NFC -->
 <form id="nfc-assign-form" method="POST"
-      action="{{ url_for('firefighter_controller.edit_firefighter_post', id=firefighter.firefighter_id) }}"
+      action="{{ url_for('mobile_controller.mobile_assign_nfc', firefighter_id=firefighter.firefighter_id) }}"
       style="display:none;">
-    <input type="hidden" name="first_name" value="{{ firefighter.first_name }}">
-    <input type="hidden" name="last_name"  value="{{ firefighter.last_name }}">
-    <input type="hidden" name="role"       value="{{ firefighter.role }}">
     <input type="hidden" name="nfc_username" id="assign-nfc-username">
     <input type="hidden" name="nfc_hash"     id="assign-nfc-hash">
 </form>
@@ -278,7 +275,7 @@
         document.getElementById("nfcModal").addEventListener("shown.bs.modal", function startReader() {
             nfcModalReader = new NFCReader("nfc-modal-input", function(data) {
                 // Sprawdź czy karta nie jest zajęta
-                fetch("/Sp/api/firefighters/by-nfc/" + encodeURIComponent(data.hash))
+                fetch("{{ url_for('firefighter_controller.api_firefighter_by_nfc', nfc_hash='__HASH__') }}".replace("__HASH__", encodeURIComponent(data.hash)))
                     .then(function(res) {
                         if (res.status === 404) {
                             // Karta wolna – przypisz
