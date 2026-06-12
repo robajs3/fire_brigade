@@ -245,11 +245,14 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/nfc.js') }}"></script>
+
 <script>
-    // ── Wydawanie przedmiotów ──
+    // ───────────────────────────────
+    // Wydawanie przedmiotów
+    // ───────────────────────────────
     var catalogRows = document.querySelectorAll(".item-touch-row");
 
-    document.getElementById("search-catalog").addEventListener("input", function() {
+    document.getElementById("search-catalog").addEventListener("input", function () {
         var q = this.value.toLowerCase();
         for (var i = 0; i < catalogRows.length; i++) {
             catalogRows[i].style.display =
@@ -264,51 +267,63 @@
         }
     }
 
-    // ── NFC Modal ──
+    // ───────────────────────────────
+    // NFC Modal
+    // ───────────────────────────────
     var nfcModalReader = null;
 
     function openNFCModal() {
         resetNFCModal();
+
         var modal = new bootstrap.Modal(document.getElementById("nfcModal"));
         modal.show();
 
         document.getElementById("nfcModal").addEventListener("shown.bs.modal", function startReader() {
-            nfcModalReader = new NFCReader("nfc-modal-input", function(data) {
-                // Sprawdź czy karta nie jest zajęta
-                fetch("{{ url_for('firefighter_controller.api_firefighter_by_nfc', nfc_hash='__HASH__') }}".replace("__HASH__", encodeURIComponent(data.hash)))
-                    .then(function(res) {
+
+            // NOWE — czytelne wcięcia
+            nfcModalReader = new NFCReader("nfc-modal-input", function (data) {
+                if (!data || !data.id) return;
+
+                fetch("...".replace("__HASH__", encodeURIComponent(data.id)))
+                    .then(function (res) {
+
                         if (res.status === 404) {
-                            // Karta wolna – przypisz
-                            document.getElementById("assign-nfc-username").value = data.userName;
-                            document.getElementById("assign-nfc-hash").value     = data.hash;
+                            document.getElementById("assign-nfc-username").value = data.id;
+                            document.getElementById("assign-nfc-hash").value     = data.id;
+
                             document.getElementById("nfc-waiting-section").style.display = "none";
-                            document.getElementById("nfc-assign-name").textContent = data.userName;
-                            document.getElementById("nfc-assign-success").style.display = "block";
-                        } else if (res.status === 200) {
-                            return res.json().then(function(json) {
-                                // Karta zajęta przez kogoś innego
-                                var msg = "Ta karta jest już przypisana do: " + json.full_name;
+                            document.getElementById("nfc-assign-name").textContent       = data.id;
+                            document.getElementById("nfc-assign-success").style.display  = "block";
+                        }
+
+                        else if (res.status === 200) {
+                            return res.json().then(function (json) {
+
                                 {% if firefighter.has_nfc %}
-                                // Jeśli to ta sama karta strażaka – pozwól zapisać
                                 if (json.id === {{ firefighter.firefighter_id }}) {
-                                    document.getElementById("assign-nfc-username").value = data.userName;
-                                    document.getElementById("assign-nfc-hash").value     = data.hash;
+                                    document.getElementById("assign-nfc-username").value = data.id;
+                                    document.getElementById("assign-nfc-hash").value     = data.id;
+
                                     document.getElementById("nfc-waiting-section").style.display = "none";
-                                    document.getElementById("nfc-assign-name").textContent = data.userName;
-                                    document.getElementById("nfc-assign-success").style.display = "block";
+                                    document.getElementById("nfc-assign-name").textContent       = data.id;
+                                    document.getElementById("nfc-assign-success").style.display  = "block";
                                     return;
                                 }
                                 {% endif %}
+
                                 document.getElementById("nfc-waiting-section").style.display = "none";
-                                document.getElementById("nfc-assign-duplicate-msg").textContent = msg;
+                                document.getElementById("nfc-assign-duplicate-msg").textContent =
+                                    "Ta karta jest już przypisana do: " + json.full_name;
                                 document.getElementById("nfc-assign-duplicate").style.display = "block";
                             });
                         }
+
                     })
-                    .catch(function() {
+                    .catch(function () {
                         showNFCError("Błąd połączenia podczas weryfikacji karty.");
                     });
             });
+
             nfcModalReader.startListening();
             this.removeEventListener("shown.bs.modal", startReader);
         });
@@ -320,12 +335,14 @@
     }
 
     function resetNFCModal() {
-        document.getElementById("nfc-waiting-section").style.display = "block";
-        document.getElementById("nfc-assign-success").style.display  = "none";
+        document.getElementById("nfc-waiting-section").style.display  = "block";
+        document.getElementById("nfc-assign-success").style.display   = "none";
         document.getElementById("nfc-assign-duplicate").style.display = "none";
         document.getElementById("nfc-assign-timeout").style.display   = "none";
+
         document.getElementById("assign-nfc-username").value = "";
         document.getElementById("assign-nfc-hash").value     = "";
+
         if (nfcModalReader) {
             nfcModalReader.stopListening();
             nfcModalReader.startListening();
@@ -336,7 +353,7 @@
         document.getElementById("nfc-assign-form").submit();
     }
 
-    document.addEventListener("nfc-timeout", function() {
+    document.addEventListener("nfc-timeout", function () {
         document.getElementById("nfc-assign-timeout").style.display = "block";
     });
 </script>

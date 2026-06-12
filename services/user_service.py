@@ -2,6 +2,10 @@ from models.user_model import db, User
 from sqlalchemy.exc import SQLAlchemyError
 
 
+def _normalize_nfc(value):
+    if not value:
+        return None
+    return value.strip().lower().replace(":", "").replace("-", "").replace(" ", "") or None
 class UserService:
 
     @staticmethod
@@ -16,7 +20,8 @@ class UserService:
     def get_user_by_nfc_hash(nfc_hash):
         if not nfc_hash:
             return None
-        return User.query.filter_by(nfc_hash=nfc_hash.strip()).first()
+        normalized = _normalize_nfc(nfc_hash)
+        return User.query.filter_by(nfc_hash=normalized).first()
 
     @staticmethod
     def get_all_active_users():
@@ -55,7 +60,7 @@ class UserService:
             if is_active is not None:
                 user.is_active = is_active
             if nfc_hash is not None:
-                user.nfc_hash = nfc_hash.strip() or None
+                user.nfc_hash = _normalize_nfc(nfc_hash)
             db.session.commit()
             return user
         except SQLAlchemyError:

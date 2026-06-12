@@ -7,54 +7,60 @@
 
     <h2 class="mb-4">Edytuj strażaka</h2>
 
-    <form method="POST" action="{{ url_for('firefighter_controller.edit_firefighter_post', id=firefighter.firefighter_id) }}">
+    <form method="POST"
+          action="{{ url_for('firefighter_controller.edit_firefighter_post', id=firefighter.firefighter_id) }}">
 
         <!-- ========================= -->
         <!-- DANE STRAŻAKA -->
         <!-- ========================= -->
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
-            Dane strażaka
+                Dane strażaka
             </div>
             <div class="card-body">
 
-            <div class="mb-3">
-                <label class="form-label">Imię *</label>
-                <input type="text" name="first_name" class="form-control"
-                   value="{{ firefighter.first_name }}" required>
-            </div>
+                <div class="mb-3">
+                    <label class="form-label">Imię *</label>
+                    <input type="text" name="first_name" class="form-control"
+                           value="{{ firefighter.first_name }}" required>
+                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Nazwisko *</label>
-                <input type="text" name="last_name" class="form-control"
-                   value="{{ firefighter.last_name }}" required>
-            </div>
+                <div class="mb-3">
+                    <label class="form-label">Nazwisko *</label>
+                    <input type="text" name="last_name" class="form-control"
+                           value="{{ firefighter.last_name }}" required>
+                </div>
 
-<div class="mb-3">
-    <label class="form-label">Rola <span class="text-danger">*</span></label>
-    <select name="role" class="form-select" required>
-        <option value="kierownik_gbr"
-            {% if firefighter.role == 'kierownik_gbr' %}selected{% endif %}>
-            Kierownik GBR
-        </option>
-        <option value="strazak"
-            {% if firefighter.role == 'strazak' %}selected{% endif %}>
-            Strażak
-        </option>
-        <option value="ratownik_medyczny"
-            {% if firefighter.role == 'ratownik_medyczny' %}selected{% endif %}>
-            Ratownik Medyczny (Pielęgniarz)
-        </option>
-        <option value="wspolny">Użytek wspólny</option>
-    </select>
-</div>
+                <div class="mb-3">
+                    <label class="form-label">Rola <span class="text-danger">*</span></label>
+                    <select name="role" class="form-select" required>
+                        <option value="kierownik_gbr"
+                            {% if firefighter.role == 'kierownik_gbr' %}selected{% endif %}>
+                            Kierownik GBR
+                        </option>
+                        <option value="strazak"
+                            {% if firefighter.role == 'strazak' %}selected{% endif %}>
+                            Strażak
+                        </option>
+                        <option value="ratownik_medyczny"
+                            {% if firefighter.role == 'ratownik_medyczny' %}selected{% endif %}>
+                            Ratownik Medyczny (Pielęgniarz)
+                        </option>
+                        <option value="wspolny"
+                            {% if firefighter.role == 'wspolny' %}selected{% endif %}>
+                            Użytek wspólny
+                        </option>
+                    </select>
+                </div>
 
             </div>
         </div>
 
-{% if firefighter.role != 'wspolny' %}
-<!-- WYMIARY -->
-<div class="card mb-4">
+        {% if firefighter.role != 'wspolny' %}
+        <!-- ========================= -->
+        <!-- WYMIARY -->
+        <!-- ========================= -->
+        <div class="card mb-4">
             <div class="card-header bg-secondary text-white">
                 Wymiary (opcjonalne)
             </div>
@@ -91,7 +97,8 @@
                         <select name="shirt_size" class="form-select">
                             <option value="">-- wybierz --</option>
                             {% for size in ['XS','S','M','L','XL','XXL','3XL'] %}
-                                <option value="{{ size }}" {% if firefighter.shirt_size == size %}selected{% endif %}>
+                                <option value="{{ size }}"
+                                    {% if firefighter.shirt_size == size %}selected{% endif %}>
                                     {{ size }}
                                 </option>
                             {% endfor %}
@@ -108,7 +115,7 @@
 
             </div>
         </div>
-{% endif %}
+        {% endif %}
 
         <!-- ========================= -->
         <!-- KARTA NFC -->
@@ -125,37 +132,36 @@
                             Karta przypisana: {{ firefighter.nfc_username }}
                         </span>
                     </p>
-                    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#nfcModal">
+                    <button type="button" class="btn btn-warning"
+                            data-bs-toggle="modal" data-bs-target="#nfcModal">
                         Zmień kartę
                     </button>
                 {% else %}
                     <p>
                         <span class="badge bg-secondary">Brak karty NFC</span>
                     </p>
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nfcModal">
+                    <button type="button" class="btn btn-primary"
+                            data-bs-toggle="modal" data-bs-target="#nfcModal">
                         Przypisz kartę
                     </button>
                 {% endif %}
 
-                <!-- Ukryte pola -->
                 <input type="hidden" name="nfc_username" id="nfc_username">
                 <input type="hidden" name="nfc_hash" id="nfc_hash">
 
             </div>
         </div>
 
-        <button type="submit" class="btn btn-success">
-            Zapisz zmiany
-        </button>
+        <button type="submit" class="btn btn-success">Zapisz zmiany</button>
 
-        <a href="{{ url_for('firefighter_controller.firefighter_detail', id=firefighter.firefighter_id) }}"
+        <a href="{{ url_for('firefighter_controller.firefighter_detail',
+                            id=firefighter.firefighter_id) }}"
            class="btn btn-secondary ms-2">
             Anuluj
         </a>
 
     </form>
 </div>
-
 
 <!-- ========================= -->
 <!-- MODAL: SKANER NFC -->
@@ -174,7 +180,8 @@
                 <p><strong>Przyłóż kartę NFC do czytnika...</strong></p>
                 <div class="spinner-border text-primary mb-3" role="status"></div>
 
-                <input id="nfc-input" type="text" class="form-control" style="opacity:0; height:1px;">
+                <input id="nfc-input" type="text" class="form-control"
+                       style="opacity:0; height:1px;">
 
                 <div id="nfc-success" class="alert alert-success mt-3" style="display:none;">
                     <span id="nfc-success-text"></span>
@@ -195,13 +202,9 @@
 <script src="{{ url_for('static', filename='js/nfc.js') }}"></script>
 
 <script>
-    // ============================
-    // MODAL NFC
-    // ============================
-
-    const successBox = document.getElementById("nfc-success");
+    const successBox  = document.getElementById("nfc-success");
     const successText = document.getElementById("nfc-success-text");
-    const timeoutBox = document.getElementById("nfc-timeout");
+    const timeoutBox  = document.getElementById("nfc-timeout");
 
     let reader = null;
 
@@ -210,10 +213,12 @@
         timeoutBox.style.display = "none";
 
         reader = new NFCReader("nfc-input", (data) => {
-            document.getElementById("nfc_username").value = data.userName;
-            document.getElementById("nfc_hash").value = data.hash;
+            if (!data || !data.id) return;
 
-            successText.textContent = "Karta przypisana: " + data.userName;
+            document.getElementById("nfc_username").value = data.id;
+            document.getElementById("nfc_hash").value     = data.id;
+
+            successText.textContent  = "✅ Karta przypisana: " + data.id;
             successBox.style.display = "block";
         });
 

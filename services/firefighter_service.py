@@ -4,6 +4,12 @@ from models.firefighter_model import Firefighter
 from models.item_model import Item, IssuanceLog
 
 
+# NOWE
+def _normalize_nfc(value):
+    if not value:
+        return None
+    return value.strip().lower().replace(":", "").replace("-", "").replace(" ", "") or None
+
 class FirefighterService:
 
     @staticmethod
@@ -18,7 +24,8 @@ class FirefighterService:
     def get_by_nfc_hash(nfc_hash):
         if not nfc_hash:
             return None
-        return Firefighter.query.filter_by(nfc_hash=nfc_hash).first()
+        normalized = _normalize_nfc(nfc_hash)
+        return Firefighter.query.filter_by(nfc_hash=normalized).first()
 
     @staticmethod
     def create(first_name, last_name,
@@ -27,14 +34,11 @@ class FirefighterService:
                hat_size=None, shirt_size=None, shoe_size=None,
                role="strazak"):
         try:
-            nfc_hash     = nfc_hash.strip()     or None if nfc_hash     else None
-            nfc_username = nfc_username.strip() or None if nfc_username else None
-
             firefighter = Firefighter(
                 first_name=first_name,
                 last_name=last_name,
-                nfc_username=nfc_username,
-                nfc_hash=nfc_hash,
+                nfc_username=nfc_username.strip() or None if nfc_username else None,
+                nfc_hash=_normalize_nfc(nfc_hash),
                 height_cm=height_cm or None,
                 chest_cm=chest_cm or None,
                 waist_cm=waist_cm or None,
@@ -67,7 +71,9 @@ class FirefighterService:
         try:
             for key, value in kwargs.items():
                 if key in allowed_fields:
-                    if key in ("nfc_hash", "nfc_username") and isinstance(value, str):
+                    if key == "nfc_hash":
+                        value = _normalize_nfc(value)
+                    elif key == "nfc_username" and isinstance(value, str):
                         value = value.strip() or None
                     setattr(firefighter, key, value)
             db.session.commit()
@@ -81,12 +87,16 @@ class FirefighterService:
         firefighter = FirefighterService.get_by_id(firefighter_id)
         if not firefighter:
             return None
-        existing = FirefighterService.get_by_nfc_hash(nfc_hash)
+
+        normalized = _normalize_nfc(nfc_hash)
+
+        existing = FirefighterService.get_by_nfc_hash(normalized)
         if existing and existing.firefighter_id != firefighter_id:
             return None
+
         try:
             firefighter.nfc_username = nfc_username.strip() or None if nfc_username else None
-            firefighter.nfc_hash     = nfc_hash.strip()     or None if nfc_hash     else None
+            firefighter.nfc_hash     = normalized
             db.session.commit()
             return firefighter
         except SQLAlchemyError:

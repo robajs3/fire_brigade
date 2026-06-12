@@ -14,30 +14,29 @@
         <!-- ========================= -->
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
-            Dane strażaka
+                Dane strażaka
             </div>
             <div class="card-body">
 
-            <div class="mb-3">
-                <label class="form-label">Imię *</label>
-                <input type="text" name="first_name" class="form-control" required>
-            </div>
+                <div class="mb-3">
+                    <label class="form-label">Imię *</label>
+                    <input type="text" name="first_name" class="form-control" required>
+                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Nazwisko *</label>
-                <input type="text" name="last_name" class="form-control" required>
-            </div>
-<div class="mb-3">
-    <label class="form-label">Rola <span class="text-danger">*</span></label>
-    <select name="role" class="form-select" required>
-        <option value="kierownik_gbr">Kierownik GBR</option>
-        <option value="strazak" selected>
-            Strażak
-        </option>
-        <option value="ratownik_medyczny">Ratownik Medyczny (Pielęgniarz)</option>
-        <option value="wspolny">Użytek wspólny</option>
-    </select>
-</div>
+                <div class="mb-3">
+                    <label class="form-label">Nazwisko *</label>
+                    <input type="text" name="last_name" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Rola <span class="text-danger">*</span></label>
+                    <select name="role" class="form-select" required>
+                        <option value="kierownik_gbr">Kierownik GBR</option>
+                        <option value="strazak" selected>Strażak</option>
+                        <option value="ratownik_medyczny">Ratownik Medyczny (Pielęgniarz)</option>
+                        <option value="wspolny">Użytek wspólny</option>
+                    </select>
+                </div>
 
             </div>
         </div>
@@ -77,8 +76,13 @@
                         <label class="form-label">Rozmiar koszulki <span class="text-muted">(opcjonalne)</span></label>
                         <select name="shirt_size" class="form-select">
                             <option value="">-- wybierz --</option>
-                            <option>XS</option><option>S</option><option>M</option>
-                            <option>L</option><option>XL</option><option>XXL</option><option>3XL</option>
+                            <option>XS</option>
+                            <option>S</option>
+                            <option>M</option>
+                            <option>L</option>
+                            <option>XL</option>
+                            <option>XXL</option>
+                            <option>3XL</option>
                         </select>
                     </div>
 
@@ -113,13 +117,13 @@
 
                 <!-- Panel NFC -->
                 <div id="nfc-panel" class="border rounded p-3 bg-light" style="display:none;">
+
                     <p class="mb-2">
                         <strong>Przyłóż kartę do czytnika...</strong>
                     </p>
 
                     <div class="spinner-border text-primary mb-3" role="status"></div>
 
-                    <!-- Input pozycjonowany poza ekranem zamiast opacity:0 -->
                     <input id="nfc-input"
                            type="text"
                            autocomplete="off"
@@ -140,9 +144,9 @@
                     <div id="nfc-timeout" class="alert alert-warning mt-3" style="display:none;">
                         Nie wykryto karty, spróbuj ponownie.
                     </div>
+
                 </div>
 
-                <!-- Ukryte pola -->
                 <input type="hidden" name="nfc_username" id="nfc_username">
                 <input type="hidden" name="nfc_hash" id="nfc_hash">
 
@@ -159,26 +163,26 @@
 <script src="{{ url_for('static', filename='js/nfc.js') }}"></script>
 
 <script>
-    const btnNFC     = document.getElementById("btn-nfc");
-    const btnNoNFC   = document.getElementById("btn-no-nfc");
-    const panel      = document.getElementById("nfc-panel");
-    const successBox = document.getElementById("nfc-success");
-    const successText= document.getElementById("nfc-success-text");
-    const errorBox   = document.getElementById("nfc-error");
-    const timeoutBox = document.getElementById("nfc-timeout");
-    const debugBox   = document.getElementById("nfc-debug");
-    const debugText  = document.getElementById("nfc-debug-text");
+    const btnNFC      = document.getElementById("btn-nfc");
+    const btnNoNFC    = document.getElementById("btn-no-nfc");
+    const panel       = document.getElementById("nfc-panel");
+    const successBox  = document.getElementById("nfc-success");
+    const successText = document.getElementById("nfc-success-text");
+    const errorBox    = document.getElementById("nfc-error");
+    const timeoutBox  = document.getElementById("nfc-timeout");
+    const debugBox    = document.getElementById("nfc-debug");
+    const debugText   = document.getElementById("nfc-debug-text");
 
     let reader = null;
 
     function showDebug(msg) {
         debugBox.style.display = "block";
-        debugText.textContent = msg;
+        debugText.textContent  = msg;
         console.log("NFC debug:", msg);
     }
 
     btnNFC.addEventListener("click", () => {
-        panel.style.display = "block";
+        panel.style.display      = "block";
         successBox.style.display = "none";
         errorBox.style.display   = "none";
         timeoutBox.style.display = "none";
@@ -188,18 +192,18 @@
         reader = new NFCReader("nfc-input", (data) => {
             showDebug("Odczytano: " + JSON.stringify(data));
 
-            if (!data.userName || !data.hash) {
+            if (!data || !data.id) {
                 errorBox.style.display = "block";
                 return;
             }
 
-            document.getElementById("nfc_username").value = data.userName;
-            document.getElementById("nfc_hash").value     = data.hash;
+            document.getElementById("nfc_username").value = data.id;
+            document.getElementById("nfc_hash").value     = data.id;
 
-            successText.textContent      = "✅ Karta przypisana: " + data.userName;
-            successBox.style.display     = "block";
-            errorBox.style.display       = "none";
-            timeoutBox.style.display     = "none";
+            successText.textContent  = "✅ Karta przypisana: " + data.id;
+            successBox.style.display = "block";
+            errorBox.style.display   = "none";
+            timeoutBox.style.display = "none";
         });
 
         reader.startListening();
@@ -223,7 +227,6 @@
         showDebug("Timeout – brak karty przez 30s");
     });
 
-    // Globalny nasłuch na focusin do debugowania
     document.addEventListener("focusin", (e) => {
         console.log("Focus na:", e.target.id || e.target.tagName);
     });

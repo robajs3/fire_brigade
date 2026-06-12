@@ -401,14 +401,17 @@
         document.getElementById("nfc-success").style.display = "none";
         document.getElementById("nfc-timeout").style.display = "none";
         document.getElementById("nfc-form").style.display = "none";
-        nfcReader = new NFCReader("nfc-input", (data) => {
-            document.getElementById("nfc_username").value = data.userName;
-            document.getElementById("nfc_hash").value = data.hash;
-            document.getElementById("nfc-success-text").textContent =
-                "Karta przypisana: " + data.userName;
-            document.getElementById("nfc-success").style.display = "block";
-            document.getElementById("nfc-form").style.display = "block";
-        });
+        // NOWE
+    nfcReader = new NFCReader("nfc-input", (data) => {
+        if (!data || !data.id) return;
+        document.getElementById("nfc_username").value = data.id;
+        document.getElementById("nfc_hash").value     = data.id;
+        document.getElementById("nfc-success-text").textContent =
+           "Karta przypisana: " + data.id;
+        document.getElementById("nfc-success").style.display = "block";
+        document.getElementById("nfc-form").style.display = "block";
+    });
+
         nfcReader.startListening();
     });
 

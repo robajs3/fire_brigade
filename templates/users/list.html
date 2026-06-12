@@ -178,14 +178,14 @@ function openNFCModal(userId, userName) {
     modal.show();
 
     document.getElementById("nfcUserModal").addEventListener("shown.bs.modal", function start() {
-        nfcUserReader = new NFCReader("nfc-user-input", function(data) {
-            document.getElementById("nfc-user-hash").value = data.hash;
-            document.getElementById("nfc-read-name").textContent = data.userName || data.hash;
-            document.getElementById("nfc-waiting").style.display = "none";
-            document.getElementById("nfc-success-section").style.display = "block";
-            if (nfcUserReader) nfcUserReader.stopListening();
-        });
-        nfcUserReader.startListening();
+       nfcUserReader = new NFCReader("nfc-user-input", function(data) {
+    if (!data || !data.id) return;
+    document.getElementById("nfc-user-hash").value = data.id;
+    document.getElementById("nfc-read-name").textContent = data.id;
+    document.getElementById("nfc-waiting").style.display = "none";
+    document.getElementById("nfc-success-section").style.display = "block";
+    if (nfcUserReader) nfcUserReader.stopListening();
+});erReader.startListening();
         this.removeEventListener("shown.bs.modal", start);
     });
 

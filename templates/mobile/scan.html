@@ -121,7 +121,7 @@
 
     function startNFC() {
         nfcReader = new NFCReader("nfc-input", function(data) {
-            fetch("/zsr/mobile/api/firefighter-by-nfc/" + encodeURIComponent(data.hash))
+            fetch("/zsr/mobile/api/firefighter-by-nfc/" + encodeURIComponent(data.id || data.hash))
                 .then(function(res) { return res.ok ? res.json() : null; })
                 .then(function(json) {
                     if (json) {
